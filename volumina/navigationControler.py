@@ -1,5 +1,7 @@
 from PyQt4.QtCore import QObject, QTimer, QEvent, Qt, QPointF, pyqtSignal
 from PyQt4.QtGui  import QColor, QCursor, QMouseEvent, QApplication, QPainter, QPen
+from PyQt4.QtCore import QStateMachine, QState, QAbstractState, QAbstractTransition, QEventTransition
+from PyQt4.QtGui import QMouseEventTransition
 
 import  copy
 from functools import partial
@@ -15,76 +17,40 @@ def posView2D(pos3d, axis):
     del pos2d[axis]
     return pos2d
 
+class CallbackEventTransition( QEventTransition ):
+    def __init__( self , obj, type, callback, sourceState = None ):
+        QEventTransition.__init__( self, obj, type, sourceState )
+        self._callback = callback
+    
+    def onTransition( self, event ):
+        self._callback( event )
+
+class CallbackMouseEventTransition( QMouseEventTransition ):
+    def __init__( self, obj, type, button, callback, sourceState = None):
+        QMouseEventTransition.__init__( self, obj, type, button, sourceState )
+        self._callback = callback
+
+    def onTransition( self, event ):
+        self._callback( event )
+
+
 #*******************************************************************************
 # N a v i g a t i o n I n t e r p r e t e r                                    *
 #*******************************************************************************
 
-class NavigationInterpreter(QObject):
-    """
-    Provides slots to listens to mouse/keyboard events from multiple
-    slice views and interprets them as actions upon a N-D volume
-    (whereas the individual ImageView2D/ImageScene2D know nothing about the
-    data they display).
+class NavigationMode( QState ):
+    def __init__( self, navCtrl, parent = None ):
+        QState.__init__( self, parent )
+        self._navCtrl = navCtrl
 
-    """
-    def __init__(self, navigationcontroler):
-        """
-        Constructs an interpreter which will update the
-        PositionModel model.
-        
-        The user of this class needs to make the appropriate connections
-        from the ImageView2D to the methods of this class from the outside 
-        himself.
-        """
-        QObject.__init__(self)
-        self._navCtrl = navigationcontroler
-
-    def start( self ):
+    def onEntry( self, event ):
+        print "Entering navigation"
         self._navCtrl.drawingEnabled = False
 
-    def finalize( self ):
-        pass
-
-    def eventFilter( self, watched, event ):
-        etype = event.type()
-        if etype == QEvent.MouseMove:
-            self.onMouseMoveEvent( watched, event )
-            return True
-        elif etype == QEvent.Wheel:
-            self.onWheelEvent( watched, event )
-            return True
-        elif etype == QEvent.MouseButtonPress:
-            self.onMousePressEvent( watched, event )
-            return True
-        elif etype == QEvent.MouseButtonRelease:
-            self.onMouseReleaseEvent( watched, event )
-            return True
-        elif etype == QEvent.MouseButtonDblClick:
-            self.onMouseDoubleClickEvent( watched, event )
-            return True
-        else:
-            return False
-
-    def onMouseMoveEvent( self, imageview, event ):
-        if imageview._dragMode == True:
-            #the mouse was moved because the user wants to change
-            #the viewport
-            imageview._deltaPan = QPointF(event.pos() - imageview._lastPanPoint)
-            imageview._panning()
-            imageview._lastPanPoint = event.pos()
-            return
-        if imageview.ticker.isActive():
-            #the view is still scrolling
-            #do nothing until it comes to a complete stop
-            return
-        
-        imageview.mousePos = mousePos = imageview.mapScene2Data(imageview.mapToScene(event.pos()))
-        oldX, oldY = imageview.x, imageview.y
-        x = imageview.x = mousePos.x()
-        y = imageview.y = mousePos.y()
-        self._navCtrl.positionCursor( x, y, self._navCtrl._views.index(imageview))
-
-    def onWheelEvent( self, imageview, event ):
+    def onWheel( self, wrappedEvent ):
+        imageview = wrappedEvent.object()
+        event = wrappedEvent.event()
+        navCtrl = self._navCtrl
         k_alt = (event.modifiers() == Qt.AltModifier)
         k_ctrl = (event.modifiers() == Qt.ControlModifier)
 
@@ -95,57 +61,130 @@ class NavigationInterpreter(QObject):
 
         if event.delta() > 0:
             if k_alt:
-                self._navCtrl.changeSliceRelative(10, self._navCtrl._views.index(imageview))
+                navCtrl.changeSliceRelative(10, navCtrl._views.index(imageview))
             elif k_ctrl:
                 scaleFactor = 1.1
                 imageview.doScale(scaleFactor)
             else:
-                self._navCtrl.changeSliceRelative(1, self._navCtrl._views.index(imageview))
+                navCtrl.changeSliceRelative(1, navCtrl._views.index(imageview))
         else:
             if k_alt:
-                self._navCtrl.changeSliceRelative(-10, self._navCtrl._views.index(imageview))
+                navCtrl.changeSliceRelative(-10, navCtrl._views.index(imageview))
             elif k_ctrl:
                 scaleFactor = 0.9
                 imageview.doScale(scaleFactor)
             else:
-                self._navCtrl.changeSliceRelative(-1, self._navCtrl._views.index(imageview))
+                navCtrl.changeSliceRelative(-1, navCtrl._views.index(imageview))
         if k_ctrl:
             mousePosAfterScale = imageview.mapToScene(event.pos())
             offset = sceneMousePos - mousePosAfterScale
             newGrviewCenter = grviewCenter + offset
             imageview.centerOn(newGrviewCenter)
-            self.onMouseMoveEvent( imageview, event)
+            self.onMouseMove( wrappedEvent)
 
-    def onMousePressEvent( self, imageview, event ):
-        if event.button() == Qt.MidButton:
-            imageview.setCursor(QCursor(Qt.SizeAllCursor))
-            imageview._lastPanPoint = event.pos()
-            imageview._crossHairCursor.setVisible(False)
-            imageview._dragMode = True
-            if imageview.ticker.isActive():
-                imageview._deltaPan = QPointF(0, 0)
-
-        if event.buttons() == Qt.RightButton:
-            #make sure that we have the cursor at the correct position
-            #before we call the context menu
-            self.onMouseMoveEvent( imageview, event)
-            imageview.customContextMenuRequested.emit(event.pos())
+    def onMouseMove( self, wrappedEvent ):
+        imageview = wrappedEvent.object()
+        event = wrappedEvent.event()
+        if imageview._ticker.isActive():
+            #the view is still scrolling
+            #do nothing until it comes to a complete stop
             return
 
-    def onMouseReleaseEvent( self, imageview, event ):
-        imageview.mousePos = imageview.mapScene2Data(imageview.mapToScene(event.pos()))
-        
-        if event.button() == Qt.MidButton:
-            imageview.setCursor(QCursor())
-            releasePoint = event.pos()
-            imageview._lastPanPoint = releasePoint
-            imageview._dragMode = False
-            imageview.ticker.start(20)
+        imageview.mousePos = mousePos = imageview.mapScene2Data(imageview.mapToScene(event.pos()))
+        oldX, oldY = imageview.x, imageview.y
+        x = imageview.x = mousePos.x()
+        y = imageview.y = mousePos.y()
+        self._navCtrl.positionCursor( x, y, self._navCtrl._views.index(imageview))
 
-    def onMouseDoubleClickEvent( self, imageview, event ):
+    def onMousePressRight( self, wrappedEvent ):
+        #make sure that we have the cursor at the correct position
+        #before we call the context menu
+        self.onMouseMove( wrappedEvent)
+        pos = wrappedEvent.event().pos()
+        wrappedEvent.object().customContextMenuRequested.emit( pos )
+        
+    def onMouseDoubleClick( self, wrappedEvent ):
+        imageview = wrappedEvent.object()
+        event = wrappedEvent.object()
+
         dataMousePos = imageview.mapScene2Data(imageview.mapToScene(event.pos()))
         imageview.mousePos = dataMousePos # FIXME: remove, when guaranteed, that no longer needed inside imageview
         self._navCtrl.positionSlice(dataMousePos.x(), dataMousePos.y(), self._navCtrl._views.index(imageview))
+        
+
+
+class DragMode( QState ):
+    def onEntry( self, event ):
+        print "Entering DragMode"
+        imageview = event.object()
+        
+        imageview.setCursor(QCursor(Qt.SizeAllCursor))
+        imageview._lastPanPoint = event.event().pos()
+        imageview._crossHairCursor.setVisible(False)
+        imageview._dragMode = True
+        if imageview._ticker.isActive():
+            imageview._deltaPan = QPointF(0, 0)
+
+    def onExit( self, event ):
+        print "Exit DragMode"
+        imageview = event.object()
+        
+        imageview.mousePos = imageview.mapScene2Data(imageview.mapToScene(event.event().pos()))
+        imageview.setCursor(QCursor())
+        releasePoint = event.event().pos()
+        imageview._lastPanPoint = releasePoint
+        imageview._dragMode = False
+        imageview._ticker.start(20)
+
+    def onMouseMove( self, wrappedEvent ):
+        imageview = wrappedEvent.object()
+        event = wrappedEvent.event()
+
+        imageview._deltaPan = QPointF(event.pos() - imageview._lastPanPoint)
+        imageview._panning()
+        imageview._lastPanPoint = event.pos()
+        
+
+
+class NavigationInterpreter(QStateMachine):
+    def __init__(self, navigationcontroler):
+        QStateMachine.__init__(self)
+        self._navCtrl = navigationcontroler
+
+        navigation = NavigationMode( navigationcontroler, self )
+        defaultMode = QState( navigation )
+        dragMode = DragMode( navigation )
+
+        for i in [0,1,2]:
+            default2drag = QMouseEventTransition( self._navCtrl._views[i], QEvent.MouseButtonPress, Qt.MidButton)
+            defaultMode.addTransition( default2drag)
+            default2drag.setTargetState(dragMode)
+
+            drag2default = QMouseEventTransition( self._navCtrl._views[i], QEvent.MouseButtonRelease, Qt.MidButton)
+            dragMode.addTransition(drag2default)
+            drag2default.setTargetState(defaultMode)
+
+            onMousePressRight = CallbackMouseEventTransition( self._navCtrl._views[i], QEvent.MouseButtonPress, Qt.RightButton, navigation.onMousePressRight ) 
+            navigation.addTransition(onMousePressRight)
+
+            onMouseDblClick = CallbackEventTransition(  self._navCtrl._views[i], QEvent.MouseButtonDblClick, navigation.onMouseDoubleClick )
+            navigation.addTransition(onMouseDblClick)
+
+            onMouseMove = CallbackEventTransition(  self._navCtrl._views[i], QEvent.MouseMove, navigation.onMouseMove )
+            navigation.addTransition(onMouseMove)
+
+            onMouseMoveDrag = CallbackEventTransition( self._navCtrl._views[i], QEvent.MouseMove, dragMode.onMouseMove )
+            dragMode.addTransition( onMouseMoveDrag )
+
+            onWheel = CallbackEventTransition( self._navCtrl._views[i], QEvent.Wheel, navigation.onWheel)
+            navigation.addTransition(onWheel)
+
+        self.setInitialState(navigation)
+        navigation.setInitialState(defaultMode)
+
+    def finalize( self ):
+        self.stop()
+
 assert issubclass(NavigationInterpreter, InterpreterABC)    
 
 #*******************************************************************************

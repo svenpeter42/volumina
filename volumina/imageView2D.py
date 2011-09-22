@@ -70,8 +70,8 @@ class ImageView2D(QGraphicsView):
         self._crossHairCursor         = None
         self._sliceIntersectionMarker = None
 
-        self.ticker = QTimer(self)
-        self.ticker.timeout.connect(self._tickerEvent)
+        self._ticker = QTimer(self)
+        self._ticker.timeout.connect(self._tickerEvent)
         
         #
         # Setup the Viewport for fast painting
