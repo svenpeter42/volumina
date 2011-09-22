@@ -43,7 +43,7 @@ class NavigationMode( QState ):
         QState.__init__( self, parent )
         self._navCtrl = navCtrl
 
-    def onEntry( self, event ):
+    def onEntry( self, wrappedEvent ):
         print "Entering navigation"
         self._navCtrl.drawingEnabled = False
 
@@ -91,7 +91,7 @@ class NavigationMode( QState ):
             return
 
         imageview.mousePos = mousePos = imageview.mapScene2Data(imageview.mapToScene(event.pos()))
-        oldX, oldY = imageview.x, imageview.y
+        imageview.oldX, imageview.oldY = imageview.x, imageview.y
         x = imageview.x = mousePos.x()
         y = imageview.y = mousePos.y()
         self._navCtrl.positionCursor( x, y, self._navCtrl._views.index(imageview))
@@ -110,28 +110,28 @@ class NavigationMode( QState ):
         dataMousePos = imageview.mapScene2Data(imageview.mapToScene(event.pos()))
         imageview.mousePos = dataMousePos # FIXME: remove, when guaranteed, that no longer needed inside imageview
         self._navCtrl.positionSlice(dataMousePos.x(), dataMousePos.y(), self._navCtrl._views.index(imageview))
+
+
         
-
-
 class DragMode( QState ):
-    def onEntry( self, event ):
+    def onEntry( self, wrappedEvent ):
         print "Entering DragMode"
-        imageview = event.object()
+        imageview = wrappedEvent.object()
         
         imageview.setCursor(QCursor(Qt.SizeAllCursor))
-        imageview._lastPanPoint = event.event().pos()
+        imageview._lastPanPoint = wrappedEvent.event().pos()
         imageview._crossHairCursor.setVisible(False)
         imageview._dragMode = True
         if imageview._ticker.isActive():
             imageview._deltaPan = QPointF(0, 0)
 
-    def onExit( self, event ):
+    def onExit( self, wrappedEvent ):
         print "Exit DragMode"
-        imageview = event.object()
+        imageview = wrappedEvent.object()
         
-        imageview.mousePos = imageview.mapScene2Data(imageview.mapToScene(event.event().pos()))
+        imageview.mousePos = imageview.mapScene2Data(imageview.mapToScene(wrappedEvent.event().pos()))
         imageview.setCursor(QCursor())
-        releasePoint = event.event().pos()
+        releasePoint = wrappedEvent.event().pos()
         imageview._lastPanPoint = releasePoint
         imageview._dragMode = False
         imageview._ticker.start(20)
@@ -147,8 +147,8 @@ class DragMode( QState ):
 
 
 class NavigationInterpreter(QStateMachine):
-    def __init__(self, navigationcontroler):
-        QStateMachine.__init__(self)
+    def __init__(self, navigationcontroler, parent = None):
+        QStateMachine.__init__(self, parent = parent)
         self._navCtrl = navigationcontroler
 
         navigation = NavigationMode( navigationcontroler, self )
