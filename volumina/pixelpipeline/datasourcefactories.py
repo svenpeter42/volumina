@@ -4,7 +4,6 @@ from imagesources import GrayscaleImageSource, ColortableImageSource, \
                          RGBAImageSource, AlphaModulatedImageSource
 from datasources import ConstantSource,ArraySource,LazyflowSource
 import numpy
-from vigra import VigraArray
 import lazyflow
 
 @multimethod(lazyflow.graph.OutputSlot,bool)
@@ -48,19 +47,5 @@ def createDataSource(source,withShape = False):
         return src
 
 @multimethod(numpy.ndarray)
-def createDataSource(source):
-    return createDataSource(source,False)
-
-@multimethod(VigraArray,bool)
-def createDataSource(source,withShape):
-    #has to handle VigraArray
-    source = source.withAxes('t','x','y','z','c')
-    src = ArraySource(source)
-    if withShape:
-        return src,source.shape
-    else:
-        return src
-    
-@multimethod(VigraArray)
 def createDataSource(source):
     return createDataSource(source,False)
