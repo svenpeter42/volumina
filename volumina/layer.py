@@ -4,7 +4,7 @@ from widgets.layerDialog import GrayscaleLayerDialog
 from widgets.layerDialog import RGBALayerDialog
 from volumina.pixelpipeline.datasourcefactories import createDataSource
 import numpy
-import lazyflow
+
 
 #*******************************************************************************
 # L a y e r                                                                    *
@@ -136,10 +136,7 @@ class NormalizableLayer( Layer ):
 class GrayscaleLayer( NormalizableLayer ):
     def __init__( self, datasource, range = (0,255), normalize = (0,255) ):
         super(GrayscaleLayer, self).__init__()
-        if isinstance(datasource,(numpy.ndarray,lazyflow.graph.OutputSlot)):
-            self.datasources = [createDataSource(datasource)]
-        else:
-            self._datasources = [datasource]
+        self._datasources = [datasource]
         self._normalize = [normalize]
         self._range = [range] 
 
