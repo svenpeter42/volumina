@@ -212,5 +212,7 @@ class RGBALayer( NormalizableLayer ):
     @classmethod
     def createFromMultichannel(cls, data):
         # disect data
-        l = RGBALayer()
+        #                    first:red, second: green, third: blue,fourth:alpha
+        channelDict = dict([(0,0),(1,1),(2,2),(3,3)])
+        l = RGBALayer(*[data[dict[i]] for i in range(len(data[-1]))])
         return l

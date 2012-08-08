@@ -34,7 +34,7 @@ class NavigationInterpreter(QObject):
     def __init__(self, navigationcontroler):
         QObject.__init__(self)
         self._navCtrl = navigationcontroler
-        self._current_state = self.FINAL 
+        self._current_state = self.FINAL
 
     def start( self ):
         if self._current_state == self.FINAL:

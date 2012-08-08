@@ -238,6 +238,31 @@ class QuadView(QWidget):
     def setMouseCoordsToQuadStatusBar(self, x, y, z):
         self.quadViewStatusBar.setMouseCoords(x, y, z) 
         
+    def switchMinMax(self,axis):
+        
+        if type(axis) == str:
+            axisDict = dict([('z',self.dock1_ofSplitHorizontal1),('x',self.dock2_ofSplitHorizontal1), \
+                    ('y',self.dock1_ofSplitHorizontal2)])
+        elif type(axis) == int:
+            axisDict = dict([(0,self.dock1_ofSplitHorizontal1),(2,self.dock2_ofSplitHorizontal1), \
+                    (1,self.dock1_ofSplitHorizontal2)])
+
+        dockWidget = axisDict.pop(axis)
+        for dWidget in axisDict.values():
+            if dWidget._isMaximized:
+                dWidget.graphicsView._hud.maximizeButtonClicked.emit()
+        dockWidget.graphicsView._hud.maximizeButtonClicked.emit()
+    
+    def switchXMinMax(self):
+        self.switchMinMax('x')
+    
+    def switchYMinMax(self):
+        self.switchMinMax('y')
+        
+    def switchZMinMax(self):
+        self.switchMinMax('z')
+            
+    
     def on_dock(self, dockWidget):
         if dockWidget._isDocked:
             dockWidget.undockView()
