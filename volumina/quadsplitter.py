@@ -239,6 +239,19 @@ class QuadView(QWidget):
         self.quadViewStatusBar.setMouseCoords(x, y, z) 
         
     def switchMinMax(self,axis):
+        """Switch an AxisViewWidget between from minimized to maximized and vice
+        versa.
+
+        Keyword arguments:
+        axis -- the axis which is represented by the widget (no default)
+                either string or integer 
+                'x' - 2
+                'y' - 1
+                'z' - 0
+        """
+        
+        #TODO: get the mapping information from where it is set! if this is not
+        #done properly - do it properly
         
         if type(axis) == str:
             axisDict = dict([('z',self.dock1_ofSplitHorizontal1),('x',self.dock2_ofSplitHorizontal1), \
