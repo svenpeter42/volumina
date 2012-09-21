@@ -460,3 +460,54 @@ class NormalizingSource( QObject ):
 
 assert issubclass(NormalizingSource, SourceABC)
 
+
+
+
+class MipRequest( object ):
+    def __init__( self, req ):
+        self._req = req
+
+    def wait( self ):
+        raw = self._req.wait()
+        mip = raw.max(3)
+        mip = mip[:,:,:,np.newaxis,...]
+        self._result = mip
+        return self._result
+    
+    # callback( result = result, **kwargs )
+    def notify( self, callback, **kwargs ):
+        raise NotImplementedError
+
+    def getResult( self ):
+        return self._result
+
+assert issubclass(NormalizingRequest, RequestABC)
+
+class MipSource( QObject ):
+    isDirty = pyqtSignal( object )
+    
+    def __init__( self, source, parent=None ):
+        super(MipSource, self).__init__(parent)
+        self._src = source
+        self._src.isDirty.connect( self.isDirty )
+    
+    def request( self, slicing ):
+        sl = list(slicing)
+        sl[3] = slice(None)
+        req = self._src.request(sl)
+        return MipRequest( req )
+
+    def setDirty( self, slicing ):
+        pass
+        #raise NotImplementedError
+
+    def __eq__( self, other ):
+        return False
+        raise NotImplementedError
+
+    def __ne__( self, other ):
+        return True
+        raise NotImplementedError        
+
+assert issubclass(MipSource, SourceABC)
+
