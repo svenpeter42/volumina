@@ -193,6 +193,30 @@ class SliceProjection( object ):
             projectedArray = np.swapaxes(projectedArray,0,1)
         return projectedArray
 
+
+
+class MipSliceProjection( SliceProjection ):
+    def domain( self, through, abscissa_range = slice(None, None), ordinate_range = slice(None,None) ):
+        slicing = list(super(MipSliceProjection, self).domain( through, abscissa_range, ordinate_range ))
+        start = through[1] - 3 if through[1] - 3 >= 0 else 0
+        stop = through[1] + 3
+        slicing[self.along[1]] = slice(start, stop)
+
+        start = through[0]
+        stop = through[0] + 2
+
+        slicing[0] = slice(start, stop)
+        return tuple(slicing)
+
+    def __call__( self, domainArray ):
+        assert domainArray.ndim == self.domainDim, "ndim %d != %d (domainArray.shape=%r, domainDim=%r)" % (domainArray.ndim, self.domainDim, domainArray.shape, self.domainDim)
+        mip = domainArray.max(self.along[1])
+        mip = mip.max(0)
+        print mip.shape
+        return mip[...,0]
+
+
+    
 #*******************************************************************************
 # T e s t                                                                      *
 #*******************************************************************************

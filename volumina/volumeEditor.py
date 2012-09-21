@@ -14,7 +14,7 @@ from navigationControler import NavigationControler, NavigationInterpreter
 from brushingcontroler import BrushingInterpreter, BrushingControler, \
                               CrosshairControler
 from brushingmodel import BrushingModel
-from slicingtools import SliceProjection
+from slicingtools import SliceProjection, MipSliceProjection
 from pixelpipeline.slicesources import SyncedSliceSources
 
 useVTK = True
@@ -191,9 +191,9 @@ class VolumeEditor( QObject ):
     ## private
     ##
     def _initImagePumps( self ):
-        alongTXC = SliceProjection( abscissa = 2, ordinate = 3, along = [0,1,4] )
-        alongTYC = SliceProjection( abscissa = 1, ordinate = 3, along = [0,2,4] )
-        alongTZC = SliceProjection( abscissa = 1, ordinate = 2, along = [0,3,4] )
+        alongTXC = MipSliceProjection( abscissa = 2, ordinate = 3, along = [0,1,4] )
+        alongTYC = MipSliceProjection( abscissa = 1, ordinate = 3, along = [0,2,4] )
+        alongTZC = MipSliceProjection( abscissa = 1, ordinate = 2, along = [0,3,4] )
 
         imagepumps = []
         imagepumps.append(volumina.pixelpipeline.imagepump.ImagePump( self.layerStack, alongTXC ))
