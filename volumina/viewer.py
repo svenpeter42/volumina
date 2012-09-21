@@ -95,39 +95,74 @@ class Viewer(QMainWindow):
         return self._dataShape
     @dataShape.setter
     def dataShape(self, s):
+        if s is None:
+            return
+        assert len(s) == 5
+        
         self._dataShape = s
-        if s is not None:
-            self.editor.dataShape = s
+        self.editor.dataShape = s
         if not self._viewerInitialized:
             self._viewerInitialized = True
             self.viewer.init(self.editor)
+            #make sure the data shape is correctly set
+            #(some signal/slot connections may be set up in the above init)
+            self.editor.dataShape = s
 
             #if its 2D, maximize the corresponding window
             if len([i for i in list(self.dataShape)[1:4] if i == 1]) == 1:
                 viewAxis = [i for i in range(1,4) if self.dataShape[i] != 1][0] - 1
                 self.viewer.quadview.switchMinMax(viewAxis)    
         
-    def addGrayscaleLayer(self,a, name=None):
+    def addGrayscaleLayer(self, a, name=None, direct=False):
         source,self.dataShape = createDataSource(a,True)
-        layer = GrayscaleLayer(source)
+        layer = GrayscaleLayer(source, direct=direct)
         if name:
             layer.name = name
         self.layerstack.append(layer)
+        return layer
         
-    def addAlphaModulatedLayer(self,a, name=None):
+    def addAlphaModulatedLayer(self, a, name=None):
         source,self.dataShape = createDataSource(a,True)
         layer = AlphaModulatedLayer(source)
         if name:
             layer.name = name
         self.layerstack.append(layer)
+        return layer
     
-    def addRGBALayer(self,a, name=None):
+    def addRGBALayer(self, a, name=None):
         source,self.dataShape = createDataSource(a,True)
         layer = RGBALayer(source[0],source[1],source[2])
         if name:
             layer.name = name
         self.layerstack.append(layer)
+        return layer
 
+    def addRandomColorsLayer(self, a, name=None, direct=False):
+        return self.addColorTableLayer(a, name, colortable=None, direct=direct)
+    
+    def addColorTableLayer(self, a, name=None, colortable=None, direct=False):
+        if colortable is None:
+            colortable = self._randomColors()
+        source,self.dataShape = createDataSource(a,True)
+        layer = ColortableLayer(source, colortable, direct=direct)
+        if name:
+            layer.name = name
+        self.layerstack.append(layer)
+        return layer
+
+    def _randomColors(self, M=256):
+        """Generates a pleasing color table with M entries."""
+
+        colors = []
+        for i in range(M):
+            if i == 0:
+                colors.append(QColor(0, 0, 0, 0).rgba())
+            else:
+                h, s, v = random.random(), random.random(), 1.0
+                color = numpy.asarray(colorsys.hsv_to_rgb(h, s, v)) * 255
+                qColor = QColor(*color)
+                colors.append(qColor.rgba())
+        return colors
         
 if __name__ == "__main__":
     

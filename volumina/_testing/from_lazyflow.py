@@ -27,27 +27,27 @@ class Op5ifyer(Operator):
         self.outputs["Output"].meta.axistags = self.inputs["Input"].meta.axistags
         
 
-    def execute(self, slot, roi, resultArea):
+    def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
         assert key[0] == slice(0,1,None)
         assert key[-2] == slice(0,1,None)
-        req = self.inputs["Input"][key[1:-2] + (key[-1],)].writeInto(resultArea[0,:,:,0,:])
+        req = self.inputs["Input"][key[1:-2] + (key[-1],)].writeInto(result[0,:,:,0,:])
         req.wait()
-        return resultArea
+        return result
 
 class OpDelay(OpArrayPiper):
     def __init__( self, g, delay_factor = 0.000001 ):
-        super(OpDelay, self).__init__(g)
+        super(OpDelay, self).__init__(graph=g)
         self._delay_factor = delay_factor
 
-    def execute(self, slot, roi, resultArea):
+    def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
-        req = self.inputs["Input"][key].writeInto(resultArea)
+        req = self.inputs["Input"][key].writeInto(result)
         req.wait()
-        t = self._delay_factor*resultArea.nbytes
+        t = self._delay_factor*result.nbytes
         #print "Delay: " + str(t) + " secs."
         time.sleep(t)    
-        return resultArea
+        return result
 
 class OpDataProvider5D(Operator):
     name = "Data Provider 5D"
@@ -63,13 +63,14 @@ class OpDataProvider5D(Operator):
         oslot.meta.shape = self._data.shape
         oslot.meta.dtype = self._data.dtype
     
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
         result[:] = self._data[key]
         result[:] = result / 10
         return result
     
-    def setInSlot(self, slot, key, value):
+    def setInSlot(self, slot, subindex, roi, value):
+        key = roi.toSlice()
         self._data[key] = value
         self.outputs["Output"].setDirty(key)
 
@@ -80,8 +81,8 @@ if __name__ == "__main__":
     
     g = Graph()
     
-    op1 = OpDataProvider5D(g, fn)
-    op2 = OpDelay(g, 0.0000000)
+    op1 = OpDataProvider5D(graph=g, fn=fn)
+    op2 = OpDelay(graph=g, 0.0000000)
     
     op2.inputs["Input"].connect(op1.outputs["Data5D"])
     

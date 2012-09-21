@@ -79,9 +79,9 @@ class ExportDialog(QDialog):
         self.setDefaultComboBoxHdf5DataType()
         
     def setVolumeShapeInfo(self):
-        for i in range(len(self.input.shape)):
-            self.lineEditInputShapeList[i].setText("0 - %d" % (int(self.input.shape[i])-1))
-            self.lineEditOutputShapeList[i].setText("0 - %d" % (int(self.input.shape[i])-1))
+        for i in range(len(self.input.meta.shape)):
+            self.lineEditInputShapeList[i].setText("0 - %d" % (int(self.input.meta.shape[i])-1))
+            self.lineEditOutputShapeList[i].setText("0 - %d" % (int(self.input.meta.shape[i])-1))
             
     def setRegExToLineEditOutputShape(self):
         r = QRegExp("([0-9]*)(-|\W)+([0-9]*)")
@@ -89,7 +89,7 @@ class ExportDialog(QDialog):
             i.setValidator(QRegExpValidator(r, i))
             
     def setDefaultComboBoxHdf5DataType(self):
-        dtype = str(self.input.dtype)
+        dtype = str(self.input.meta.dtype)
         for i in range(self.comboBoxHdf5DataType.count()):
             if dtype == str(self.comboBoxHdf5DataType.itemText(i)):
                 self.comboBoxHdf5DataType.setCurrentIndex(i)
@@ -166,7 +166,7 @@ class ExportDialog(QDialog):
             r.indexIn(self.lineEditOutputShapeList[i].displayText())
             p = self.lineEditOutputShapeList[i].palette()
             if r.cap(1) == "" or r.cap(2) == "" or r.cap(3) == "" or \
-            int(r.cap(1)) > int(r.cap(3)) or int(r.cap(3)) > int(self.input.shape[i])-1:
+            int(r.cap(1)) > int(r.cap(3)) or int(r.cap(3)) > int(self.input.meta.shape[i])-1:
                 p.setColor(QPalette.Base, Qt.red)
                 p.setColor(QPalette.Text,Qt.white)
                 isValid = False
@@ -222,7 +222,7 @@ class ExportDialog(QDialog):
             if self.radioButtonStack.isChecked():
                 key = self.createKeyForOutputShape()
                 if _has_lazyflow:
-                    writer = OpStackWriter(self.graph)
+                    writer = OpStackWriter(graph=self.graph)
                     writer.inputs["input"].connect(self.input)
                     writer.inputs["filepath"].setValue(str(self.lineEditFilePath.displayText()))
                     writer.inputs["dummy"].setValue(["zt"])
@@ -231,7 +231,7 @@ class ExportDialog(QDialog):
             if self.radioButtonH5.isChecked():
                 h5Key = self.createRoiForOutputShape()
                 if _has_lazyflow:
-                    writerH5 = OpH5Writer(self.graph)
+                    writerH5 = OpH5Writer(graph=self.graph)
                     writerH5.inputs["filename"].setValue(str(self.lineEditFilePath.displayText()))
                     writerH5.inputs["hdf5Path"].setValue(str(self.lineEditHdf5Path.displayText()))
                     writerH5.inputs["input"].connect(self.input)

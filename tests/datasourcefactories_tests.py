@@ -21,12 +21,12 @@ if hasLazyflow:
             self.outputs["Output"].meta.assignFrom(self.inputs["Input"].meta)
             self.outputs["Output"].connect(self.inputs["Input"])
             
-        def execute(self,slot,roi,result):
+        def execute(self, slot, subindex, roi, result):
             
             result[:] = self.outputs["Output"](roi).wait()
             return result
 
-        def propagateDirty(self, inputSlot, roi):
+        def propagateDirty(self, inputSlot, subindex, roi):
             self.Output.setDirty(roi)
         
 class Test_DatasourceFactories(TestCase):
@@ -35,7 +35,7 @@ class Test_DatasourceFactories(TestCase):
         self.dim = (10,)*5
         if hasLazyflow:
             self.g = Graph()
-            self.op = OpPiper(self.g)
+            self.op = OpPiper(graph=self.g)
         
     def test_lazyflowSource(self):
         if hasLazyflow:
