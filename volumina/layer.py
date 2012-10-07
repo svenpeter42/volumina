@@ -332,6 +332,7 @@ class ClickableColortableLayer(ClickableLayer):
     def randomizeColors(self):
         self.colorTable = generateRandomColors(len(self._colorTable), "hsv", {"v": 1.0}, True)
 
+
 #*******************************************************************************
 # R G B A L a y e r                                                            *
 #*******************************************************************************

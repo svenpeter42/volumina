@@ -175,8 +175,8 @@ class Viewer(QMainWindow):
         self.layerstack.append(layer)
         return (layer, source)
     
-    def addClickableSegmentationLayer(self, a, name=None, direct=False):
-        M = a.max()
+    def addClickableSegmentationLayer(self, a, maxlabel=None, name=None, direct=False):
+        M = maxlabel if maxlabel is not None else a.max()
         clickedObjects = dict() #maps from object to the label that is used for it
         usedLabels = set()
         def onClick(layer, pos5D, pos):

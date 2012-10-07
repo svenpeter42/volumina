@@ -277,9 +277,9 @@ class ColortableImageRequest( object ):
     def toImage( self ):
         a = self._arrayreq.getResult()
         assert a.ndim == 2
-
         #make sure that a has values in range [0, colortable_length)
         a = np.remainder(a, len(self._colorTable))
+        
         #apply colortable
         img = self._colorTable[a]
         img = array2qimage(img)
