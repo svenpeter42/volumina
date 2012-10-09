@@ -204,7 +204,7 @@ class LazyflowSource( QObject ):
 
     def __init__( self, outslot, priority = 0 ):
         super(LazyflowSource, self).__init__()
-
+        print "init a lazyflowsource"
         self._orig_outslot = outslot
 
         # Attach an Op5ifyer to ensure the data will display correctly
@@ -221,6 +221,7 @@ class LazyflowSource( QObject ):
             volumina.printLock.release()
         if not is_pure_slicing(slicing):
             raise Exception('LazyflowSource: slicing is not pure')
+        print "requesting slice:", slicing
         return LazyflowRequest( self._op5, slicing, self._priority )
 
     def _setDirtyLF(self, slot, roi):
@@ -284,7 +285,7 @@ class RelabelingLazyflowSinkSource( LazyflowSource ):
     def setRelabeling(self, relabeling):
         """Set a new relabeling vector. It should have the length of max_object_number+1
         and contain the label of each object at its index position. 0 for not labeled"""
-        assert relabeling.dtype == self._array.dtype
+        #assert relabeling.dtype == self._array.dtype
         self._relabeling = relabeling
         self.setDirty(5*(slice(None),))
         
@@ -301,9 +302,7 @@ class RelabelingLazyflowSinkSource( LazyflowSource ):
     def request( self, slicing ):
         if not is_pure_slicing(slicing):
             raise Exception('ArraySource: slicing is not pure')
-        assert(len(slicing) == len(self._array.shape)), \
-            "slicing into an array of shape=%r requested, but slicing is %r" \
-            % (self._array.shape, slicing)
+        
         a = LazyflowRequest(self._op5, slicing, self._priority )
         a = a.wait()
         
@@ -312,10 +311,10 @@ class RelabelingLazyflowSinkSource( LazyflowSource ):
             a = self._relabeling[a]
         #assert a.dtype == oldDtype 
         return ArrayRequest(a, 5*(slice(None),))
-    def put(self):
+    def put(self, relabeling):
         #FIXME: we just give the whole list here, don't bother with slicing
         #self.inputSlot[:] = self._relabeling[:]
-        
+        self.setRelabeling(relabeling)
         print "passing the relabeling list:", self._relabeling
         #self.inputSlot.setValue(self._relabeling)
         
