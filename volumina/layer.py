@@ -236,6 +236,7 @@ class GrayscaleLayer( NormalizableLayer ):
         self._datasources = [datasource]
         self._normalize = [normalize]
         self._range = [range] 
+        print "init a grayscale layer"
 
 #*******************************************************************************
 # A l p h a M o d u l a t e d L a y e r                                        *
