@@ -204,7 +204,6 @@ class LazyflowSource( QObject ):
 
     def __init__( self, outslot, priority = 0 ):
         super(LazyflowSource, self).__init__()
-        print "init a lazyflowsource"
         self._orig_outslot = outslot
 
         # Attach an Op5ifyer to ensure the data will display correctly
@@ -221,7 +220,7 @@ class LazyflowSource( QObject ):
             volumina.printLock.release()
         if not is_pure_slicing(slicing):
             raise Exception('LazyflowSource: slicing is not pure')
-        print "requesting slice:", slicing
+        
         return LazyflowRequest( self._op5, slicing, self._priority )
 
     def _setDirtyLF(self, slot, roi):

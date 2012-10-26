@@ -28,7 +28,7 @@ signal.signal(signal.SIGINT, signal_handler)
 
 
 def testRequest():
-    lena = numpy.load('/home/mschiegg/software/volumina/volumina/_testing/lena.npy')
+    lena = numpy.load('/home/akreshuk/volumina/volumina/_testing/lena.npy')
     raw = numpy.zeros((1,512,512,1,1), dtype=numpy.uint8)
     raw[0,:,:,0,0] = lena
 
@@ -56,10 +56,10 @@ def testView():
 
     graph = Graph()
     opReaderCC = OpInputDataReader(graph=graph)
-    opReaderCC.FilePath.setValue("/home/mschiegg/data/circles3d_cc.h5/volume/data")
+    opReaderCC.FilePath.setValue("/home/akreshuk/data/circles3d_cc.h5/volume/data")
 
     opReaderBin = OpInputDataReader(graph=graph)
-    opReaderBin.FilePath.setValue("/home/mschiegg/data/circles3d.h5/volume/data")
+    opReaderBin.FilePath.setValue("/home/akreshuk/data/circles3d.h5/volume/data")
     '''
     f = h5py.File("/home/mschiegg/data/circles3d.h5")
     d = f["/volume/data"]
@@ -70,19 +70,20 @@ def testView():
     v = Viewer()
     direct = False
 
-    #bindata = LazyflowSource(opReaderBin.outputs["Output"])
+    bindata = LazyflowSource(opReaderBin.outputs["Output"])
 
     #bindata = opReaderBin.Output[:].wait()
     # v.addGrayscaleLayer(bindata, "raw", direct)
+    sh = (1,)+opReaderBin.Output.meta.shape
+    v.dataShape = sh
     
-    src = createDataSource(opReaderBin.Output)
-    lbin = GrayscaleLayer(src, direct=direct)
+    lbin = GrayscaleLayer(bindata, direct=direct)
     lbin.visible=direct
     lbin.name = "raw"
     v.layerstack.append(lbin)
     
     #sub = lazyflow.rtype.SubRegion(None, start=[0, 0, 0, 0], stop=[10, 10, 10, 1])
-    '''
+    
     cc = opReaderCC.outputs["Output"][:].wait()
     #cc = opReaderCC.Output(pslice=numpy.s_[:]).wait()
     #cc = opReaderCC.Output(sub).wait()
@@ -93,7 +94,7 @@ def testView():
 
     #ccdata = RelabelingLazyflowSinkSource(opReaderCC.outputs["Output"], None)
     v.addClickableSegmentationLayer(cc, name = "click-click", maxlabel = maxlabel, direct = direct)
-    '''
+    
     print v.layerstack
     
     v.show()
