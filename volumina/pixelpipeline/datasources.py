@@ -298,7 +298,10 @@ class RelabelingLazyflowSinkSource( LazyflowSource ):
         if setDirty:
             self.setDirty(5*(slice(None),))
             
-    def request( self, slicing ):
+    def getRelabelingEntry(self, index):
+        return self._relabeling[index]
+            
+    def request( self, slicing, original=False ):
         if not is_pure_slicing(slicing):
             raise Exception('ArraySource: slicing is not pure')
         
@@ -306,10 +309,12 @@ class RelabelingLazyflowSinkSource( LazyflowSource ):
         a = a.wait()
         
         #oldDtype = a.dtype
-        if self._relabeling is not None:
-            a = self._relabeling[a]
+        if not original:
+            if self._relabeling is not None:
+                a = self._relabeling[a]
         #assert a.dtype == oldDtype 
         return ArrayRequest(a, 5*(slice(None),))
+        
     def put(self, relabeling):
         #FIXME: we just give the whole list here, don't bother with slicing
         #self.inputSlot[:] = self._relabeling[:]
