@@ -24,23 +24,9 @@ class ImageSource( QObject ):
     isDirty -- a rectangular region has changed; transmits
                an empty QRect if the whole image is dirty
 
-    idChanged -- source represents a different image now (oldId, newId);
-                 id is some immutable object
-
     '''
 
     isDirty = pyqtSignal( QRect )
-    idChanged = pyqtSignal( object, object )
-
-    @property
-    def id( self ):
-        return self.__id
-
-    @id.setter
-    def id( self, v):
-        old = self.id
-        self.__id = v
-        self.idChanged.emit(old, v)
 
     def __init__( self, guarantees_opaqueness = False, parent = None, direct=False ):
         ''' direct: whether this request will be computed synchronously in the GUI thread (direct=True)
@@ -50,9 +36,8 @@ class ImageSource( QObject ):
         super(ImageSource, self).__init__( parent = parent )
         self._opaque = guarantees_opaqueness
         self.direct = direct
-        self.__id = id(self)
 
-    def request( self, rect ):
+    def request( self, rect, through=None ):
         raise NotImplementedError
 
     def setDirty( self, slicing ):
@@ -82,7 +67,6 @@ class ImageSource( QObject ):
 
         '''
         return self._opaque
-        
 assert issubclass(ImageSource, SourceABC)
 
 #*******************************************************************************
@@ -94,15 +78,13 @@ class GrayscaleImageSource( ImageSource ):
         assert isinstance(arraySource2D, SourceABC), 'wrong type: %s' % str(type(arraySource2D))
         super(GrayscaleImageSource, self).__init__( guarantees_opaqueness = True, direct=layer.direct )
         self._arraySource2D = arraySource2D
-        self.id = arraySource2D.id
 
         self._layer = layer
         
         self._arraySource2D.isDirty.connect(self.setDirty)
-        self._arraySource2D.idChanged.connect(self._onIdChanged)
         self._layer.normalizeChanged.connect(lambda: self.setDirty((slice(None,None), slice(None,None))))
 
-    def request( self, qrect ):
+    def request( self, qrect, through=None ):
         if cfg.getboolean('pixelpipeline', 'verbose'):
             volumina.printLock.acquire()
             print Fore.RED + "  GrayscaleImageSource '%s' requests (x=%d, y=%d, w=%d, h=%d)" \
@@ -112,12 +94,8 @@ class GrayscaleImageSource( ImageSource ):
             
         assert isinstance(qrect, QRect)
         s = rect2slicing(qrect)
-        req = self._arraySource2D.request(s)
+        req = self._arraySource2D.request(s, through)
         return GrayscaleImageRequest( req, self._layer.normalize[0], direct=self.direct )
-
-    def _onIdChanged( self, oldId, newId ):
-        self.id = newId
-        
 assert issubclass(GrayscaleImageSource, SourceABC)
 
 class GrayscaleImageRequest( object ):
@@ -159,12 +137,10 @@ class AlphaModulatedImageSource( ImageSource ):
         super(AlphaModulatedImageSource, self).__init__()
         self._arraySource2D = arraySource2D
         self._layer = layer
-        self.id = arraySource2D.id
 
         self._arraySource2D.isDirty.connect(self.setDirty)
-        self._arraySource2D.idChanged.connect(self._onIdChanged)
 
-    def request( self, qrect ):
+    def request( self, qrect, through=None ):
         if cfg.getboolean('pixelpipeline', 'verbose'):
             volumina.printLock.acquire()
             print Fore.RED + "  AlphaModulatedImageSource '%s' requests (x=%d, y=%d, w=%d, h=%d)" \
@@ -174,11 +150,8 @@ class AlphaModulatedImageSource( ImageSource ):
             
         assert isinstance(qrect, QRect)
         s = rect2slicing(qrect)
-        req = self._arraySource2D.request(s)
+        req = self._arraySource2D.request(s, through)
         return AlphaModulatedImageRequest( req, self._layer.tintColor, self._layer.normalize[0] )
-
-    def _onIdChanged( self, oldId, newId ):
-        self.id = newId
 assert issubclass(AlphaModulatedImageSource, SourceABC)
 
 class AlphaModulatedImageRequest( object ):
@@ -226,10 +199,7 @@ class ColortableImageSource( ImageSource ):
         assert isinstance(arraySource2D, SourceABC), 'wrong type: %s' % str(type(arraySource2D))
         super(ColortableImageSource, self).__init__(direct=layer.direct)
         self._arraySource2D = arraySource2D
-        self.id = arraySource2D.id
-
         self._arraySource2D.isDirty.connect(self.setDirty)
-        self._arraySource2D.idChanged.connect(self._onIdChanged)        
 
         self._layer = layer        
         self.updateColorTable()
@@ -246,7 +216,7 @@ class ColortableImageSource( ImageSource ):
             self._colorTable[i,3] = color.alpha() 
         self.isDirty.emit(QRect()) # empty rect == everything is dirty
         
-    def request( self, qrect ):
+    def request( self, qrect, through=None ):
         if cfg.getboolean('pixelpipeline', 'verbose'):
             volumina.printLock.acquire()
             print Fore.RED + "  ColortableImageSource '%s' requests (x=%d, y=%d, w=%d, h=%d) = %r" \
@@ -256,11 +226,8 @@ class ColortableImageSource( ImageSource ):
             
         assert isinstance(qrect, QRect)
         s = rect2slicing(qrect)
-        req = self._arraySource2D.request(s)
+        req = self._arraySource2D.request(s, through)
         return ColortableImageRequest( req, self._colorTable, self.direct )
-
-    def _onIdChanged( self, oldId, newId ):
-        self.id = newId
 assert issubclass(ColortableImageSource, SourceABC)
 
 class ColortableImageRequest( object ):
@@ -317,13 +284,10 @@ class RGBAImageSource( ImageSource ):
 
         super(RGBAImageSource, self).__init__( guarantees_opaqueness = guarantees_opaqueness )
         self._channels = channels
-        self.id = (red.id, green.id, blue.id, alpha.id)
         for arraySource in self._channels:
             arraySource.isDirty.connect(self.setDirty)
-        for arraySource in self._channels:
-            arraySource.idChanged.connect(self._onIdChanged)
 
-    def request( self, qrect ):
+    def request( self, qrect, through=None ):
         if cfg.getboolean('pixelpipeline', 'verbose'):
             volumina.printLock.acquire()
             print Fore.RED + "  RGBAImageSource '%s' requests (x=%d, y=%d, w=%d, h=%d)" \
@@ -333,16 +297,14 @@ class RGBAImageSource( ImageSource ):
             
         assert isinstance(qrect, QRect)
         s = rect2slicing( qrect )
-        r = self._channels[0].request(s)
-        g = self._channels[1].request(s)
-        b = self._channels[2].request(s)
-        a = self._channels[3].request(s)
+        r = self._channels[0].request(s, through)
+        g = self._channels[1].request(s, through)
+        b = self._channels[2].request(s, through)
+        a = self._channels[3].request(s, through)
         shape = list( slicing2shape(s) )
         assert len(shape) == 2
         assert all([x > 0 for x in shape])
         return RGBAImageRequest( r, g, b, a, shape, *self._layer._normalize )
-    def _onIdChanged( self, oldId, newId ):
-        self.id = (self._channels[0].id, self._channels[1].id, self._channels[2].id, self._channels[3].id) 
 assert issubclass(RGBAImageSource, SourceABC)
 
 class RGBAImageRequest( object ):
@@ -395,7 +357,7 @@ assert issubclass(RGBAImageRequest, RequestABC)
 
 class RandomImageSource( ImageSource ):
     '''Random noise image for testing and debugging.'''
-    def request( self, qrect ):
+    def request( self, qrect, through=None ):
         assert isinstance(qrect, QRect)
         s = rect2slicing(qrect)
         shape = slicing2shape( s )
