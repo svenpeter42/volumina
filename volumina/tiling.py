@@ -84,6 +84,8 @@ class Tiling(object):
         self.imageRects  = []
         self.tileRects  = []
         self.sliceShape = sliceShape
+        self.patchAccessor = patchAccessor
+        self.data2scene = data2scene
 
         for patchNr in range(patchAccessor.patchCount):
             #the patch accessor uses the data coordinate system
@@ -129,23 +131,16 @@ class Tiling(object):
             if p.contains(point):
                 return i
 
-    def intersectedF(self, rectF):
-        if not rectF.isValid():
-            return range(len(self.imageRectFs))
-        i = []
-        for patchNr, patchRectF in enumerate(self.tileRectFs):
-            if rectF.intersects(patchRectF):
-                i.append(patchNr)
-        return i
+    def intersected(self, sceneRect):
+        if not sceneRect.isValid():
+            return range(len(self.tileRects))
 
-    def intersected(self, rect):
-        if not rect.isValid():
-            return range(len(self.imageRects))
-        i = []
-        for patchNr, patchRect in enumerate(self.tileRects):
-            if rect.intersects(patchRect):
-                i.append(patchNr)
-        return i
+        # Patch accessor uses data coordinates
+        rect = self.data2scene.inverted()[0].mapRect(sceneRect)
+        patchNumbers = self.patchAccessor.getPatchesForRect(
+                            rect.topLeft().x(), rect.topLeft().y(),
+                            rect.bottomRight().x(), rect.bottomRight().y() )
+        return patchNumbers
 
     def __len__(self):
         return len(self.imageRectFs)
@@ -380,7 +375,7 @@ class TileProvider( QObject ):
 
         '''
         self.requestRefresh( rectF )
-        tile_nos = self.tiling.intersectedF( rectF )
+        tile_nos = self.tiling.intersected( rectF )
         stack_id = self._current_stack_id
         for tile_no in tile_nos:
             qimg, progress = self._cache.tile(stack_id, tile_no)
@@ -398,7 +393,7 @@ class TileProvider( QObject ):
         the end of the rendering.
 
         '''
-        tile_nos = self.tiling.intersectedF( rectF )
+        tile_nos = self.tiling.intersected( rectF )
         for tile_no in tile_nos:
             stack_id = self._current_stack_id
             self._refreshTile( stack_id, tile_no )
@@ -418,7 +413,7 @@ class TileProvider( QObject ):
             if stack_id not in self._cache:
                 self._cache.addStack(stack_id)
                 self._cache.touchStack( self._current_stack_id )
-            tile_nos = self.tiling.intersectedF( rectF )
+            tile_nos = self.tiling.intersected( rectF )
             for tile_no in tile_nos:
                 self._refreshTile( stack_id, tile_no, prefetch=True )
 
@@ -556,7 +551,9 @@ class TileProvider( QObject ):
 
     def _renderTile( self, stack_id, tile_nr ):
         qimg = QImage(self.tiling.imageRects[tile_nr].size(), QImage.Format_ARGB32_Premultiplied)
-        qimg.fill(Qt.white)
+        #qimg.fill(Qt.white)  # Apparently, some difference between Qt 4.7 and 4.8 causes 
+                              #   QImage.fill(Qt.white) to do the wrong thing here.  It might be a Qt bug.
+        qimg.fill(0xffffffff) # Use a hex constant instead.
 
         p = QPainter(qimg)
         for i, v in enumerate(reversed(self._sims)):
