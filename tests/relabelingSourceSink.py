@@ -117,7 +117,7 @@ def testView():
    
 
     labelsrc = RelabelingLazyflowSinkSource(opReaderCC.outputs["Output"], None)
-    relabeling = numpy.zeros((maxlabel,), dtype=numpy.uint32)
+    relabeling = numpy.zeros((maxlabel+1,), dtype=numpy.uint32)
     labelsrc.setRelabeling(relabeling)
     labellayer = ClickableColortableLayer(v.editor, onClick, datasource=labelsrc, \
                                                   colorTable=ct, direct=direct)
