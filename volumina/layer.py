@@ -121,7 +121,6 @@ class Layer( QObject ):
 #*******************************************************************************
 # C l i c k a b l e L a y e r                                                  *
 #*******************************************************************************
-
 class ClickInterpreter(QObject):
     """Intercepts RIGHT CLICK and double click events on a layer and calls a given functor with the clicked
        position."""
@@ -162,6 +161,8 @@ class ClickInterpreter(QObject):
         
         return self.baseInterpret.eventFilter(watched, event)
 
+
+
 class ClickableLayer( Layer ):
     """A layer that, when being activated/selected, switches to an interpreter than can intercept
        right click events"""
@@ -170,8 +171,10 @@ class ClickableLayer( Layer ):
         self._editor = editor
         self._clickInterpreter = ClickInterpreter(editor, self, clickFunctor)
         self._inactiveInterpreter = self._editor.eventSwitch.interpreter
+        
     
     def setActive(self, active):
+        
         if active:
             self._editor.eventSwitch.interpreter = self._clickInterpreter
         else:
@@ -325,8 +328,8 @@ class ClickableColortableLayer(ClickableLayer):
         assert isinstance(datasource, SourceABC)
         super(ClickableColortableLayer, self).__init__(editor, clickFunctor, direct=direct)
         self._datasources = [datasource]
-        self._colorTable = colorTable
         self.data = datasource
+        self._colorTable = colorTable
         
         self.colortableIsRandom = False
         self.zeroIsTransparent  = False

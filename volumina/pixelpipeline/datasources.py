@@ -229,6 +229,7 @@ class LazyflowSource( QObject ):
     def setDirty( self, slicing):
         if not is_pure_slicing(slicing):
             raise Exception('dirty region: slicing is not pure')
+        print "LazyflowSource.isDirty.emit(%r)" % (slicing,)
         self.isDirty.emit( slicing )
 
     def __eq__( self, other ):
@@ -294,8 +295,10 @@ class RelabelingLazyflowSinkSource( LazyflowSource ):
            
            If setDirty is true, the source will signal dirtyness. If you plan to issue many calls to this function
            in a loop, setDirty to true only on the last call."""
+        print "setting entry", index, value
         self._relabeling[index] = value
         if setDirty:
+            print "setting dirty"
             self.setDirty(5*(slice(None),))
             
     def getRelabelingEntry(self, index):
@@ -305,6 +308,7 @@ class RelabelingLazyflowSinkSource( LazyflowSource ):
         if not is_pure_slicing(slicing):
             raise Exception('ArraySource: slicing is not pure')
         
+        print "requesting slicing", slicing
         a = LazyflowRequest(self._op5, slicing, self._priority )
         a = a.wait()
         

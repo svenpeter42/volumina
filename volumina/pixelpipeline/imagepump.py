@@ -211,6 +211,7 @@ class StackedImageSources( QObject ):
             raise KeyError()
 
     def _onImageSourceDirty( self, imageSource, rect ):
+        print "now layer %s is dirty in rect = %r" % (imageSource, rect)
         self.layerDirty.emit( imageSource, rect )
 
     def _onOpacityChanged( self, layer, opacity ):
