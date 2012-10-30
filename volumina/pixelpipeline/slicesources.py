@@ -104,8 +104,6 @@ class SliceSource( QObject ):
 
     def _onDatasourceDirty( self, ds_slicing ):
         # embedding of slice in datasource space
-        print "KKKKKKKKKKKKK, slicesources.onDatasetDirty", ds_slicing
-        
         embedding = self.sliceProjection.domain(self.through)
         inter = intersection(embedding, ds_slicing)
 
