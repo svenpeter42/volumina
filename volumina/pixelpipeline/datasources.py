@@ -251,8 +251,10 @@ class RelabelingLazyflowSource(LazyflowSource):
         """Set a new relabeling vector. It should have the length of max_object_number+1
         and contain the label of each object at its index position. 0 for not labeled"""
         #assert relabeling.dtype == self._array.dtype
+        #print "inside:", relabeling
         self._relabeling = relabeling
-        print "setting dirty"
+        #print "setting dirty"
+        #print "after setting:", self._relabeling
         self.setDirty(5*(slice(None),))
         
     def setRelabelingEntry(self, index, value, setDirty = True):
@@ -268,6 +270,7 @@ class RelabelingLazyflowSource(LazyflowSource):
             self.setDirty(5*(slice(None),))
             
     def request( self, slicing, original=False ):
+        #print "request a slicing, my relabeling:", self._relabeling
         if not is_pure_slicing(slicing):
             raise Exception('ArraySource: slicing is not pure')
         
