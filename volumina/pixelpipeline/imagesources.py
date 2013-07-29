@@ -158,6 +158,7 @@ class GrayscaleImageRequest( object ):
             vigra.colors.gray2qimage_ARGB32Premultiplied(a, byte_view(img), np.asarray(self._normalize, dtype=a.dtype))
             tNew = 1000.0*(time.time()-tNew)
 
+        '''
         tNew_numpy2array = None
         if _has_numpy2qimage:
             tNew_numpy2array = time.time()
@@ -180,10 +181,11 @@ class GrayscaleImageRequest( object ):
         tOld = 1000.0*(time.time()-tOld)
         
         if tOld is not None and tNew_numpy2array is not None:
-            self.logger.debug("old <-> new: %f <-> %f (numpy2array: %f) msec, speedup = %f" % (tOld, tNew, tNew_numpy2array, tOld/tNew))
+            self.logger.debug("old <-> new: %f <-> %f (numpy2array: %f) msec, speedup = %f, old_speedup = %f" % (tOld, tNew, tNew_numpy2array, tOld/tNew, tOld/tNew_numpy2array))
         elif tOld is not None:
             self.logger.debug("old <-> new: %f <-> %f msec, speedup = %f" % (tOld, tNew, tOld/tNew))
-            
+        '''
+        
         '''
         if self.logger.getEffectiveLevel() >= logging.DEBUG:
             tTOT = 1000.0*(time.time()-t)
@@ -257,13 +259,14 @@ class AlphaModulatedImageRequest( object ):
             vigra.colors.alphamodulated2qimage_ARGB32Premultiplied(a, byte_view(img), tintColor, normalize) 
             tNew = 1000.0*(time.time()-tNew)
        
+        '''
         tNew_numpy2array = None
         if _has_numpy2qimage:  
             tNew_numpy2array = time.time()
             img_numpy2array = QImage(a.shape[1], a.shape[0], QImage.Format_ARGB32_Premultiplied)
             Converters.array2alphamodulated(a, img_numpy2array, self._tintColor.redF(), self._tintColor.greenF(), self._tintColor.blueF(), *self._normalize);
             tNew_numpy2array = 1000.0*(time.time()-tNew_numpy2array)
-        
+            
         #
         # now, the old way (note that data might be in cache already)
         #
@@ -286,6 +289,8 @@ class AlphaModulatedImageRequest( object ):
             self.logger.debug("old <-> new: %f <-> %f msec, speedup = %f" % (tOld, tNew, tOld/tNew))
         else:
             self.logger.debug("new: %f msec" % (tNew,))
+        
+        '''
         
         return img
             
