@@ -18,11 +18,18 @@ from volumina.slicingtools import is_bounded, slicing2rect, rect2slicing, slicin
 from volumina.config import cfg
 import numpy as np
 
+from numpy2qimage import Converters
+
 _has_vigra = True
 try:
     import vigra
 except ImportError:
     _has_vigra = False
+_has_numpy2qimage = True
+try:
+    import numpy2qimage
+except ImportError:
+    _has_numpy2qimage = False
 
 #*******************************************************************************
 # I m a g e S o u r c e                                                        *
@@ -136,19 +143,54 @@ class GrayscaleImageRequest( object ):
         assert a.ndim == 2, "GrayscaleImageRequest.toImage(): result has shape %r, which is not 2-D" % (a.shape,)
        
         normalize = self._normalize 
-        if normalize:
+        if not normalize:
+            normalize = [0,255]
+            
+        aCopy = a.copy()
+        
+        #
+        # new conversion
+        #
+        if _has_vigra and hasattr(vigra.colors, 'gray2qimage_ARGB32Premultiplied'):
+            tNew = time.time()
+            img = QImage(a.shape[1], a.shape[0], QImage.Format_ARGB32_Premultiplied)
+            n = np.asarray(self._normalize, dtype=a.dtype)
+            vigra.colors.gray2qimage_ARGB32Premultiplied(a, byte_view(img), np.asarray(self._normalize, dtype=a.dtype))
+            tNew = 1000.0*(time.time()-tNew)
+
+        tNew_numpy2array = None
+        if _has_numpy2qimage:
+            tNew_numpy2array = time.time()
+            img_numpy2array = QImage(a.shape[1], a.shape[0], QImage.Format_ARGB32_Premultiplied)
+            Converters.array2gray(a, img_numpy2array, *self._normalize)
+            tNew_numpy2array = 1000.0*(time.time()-tNew_numpy2array)
+        
+        #
+        # now, the old way (note that data might be in cache already)
+        #
+        tOld = None
+        tOld = time.time()
+        if self._normalize:
             #clipping has been implemented in this commit,
             #but it is not yet available in the packages obtained via easy_install
             #http://www.informatik.uni-hamburg.de/~meine/hg/qimage2ndarray/diff/fcddc70a6dea/qimage2ndarray/__init__.py
-            a = np.clip(a, *normalize)
-        img = gray2qimage(a, normalize)
-        ret = img.convertToFormat(QImage.Format_ARGB32_Premultiplied)
+            a = np.clip(aCopy, *self._normalize)
+        imgOld = gray2qimage(a, self._normalize)
+        ret = imgOld.convertToFormat(QImage.Format_ARGB32_Premultiplied)
+        tOld = 1000.0*(time.time()-tOld)
         
+        if tOld is not None and tNew_numpy2array is not None:
+            self.logger.debug("old <-> new: %f <-> %f (numpy2array: %f) msec, speedup = %f" % (tOld, tNew, tNew_numpy2array, tOld/tNew))
+        elif tOld is not None:
+            self.logger.debug("old <-> new: %f <-> %f msec, speedup = %f" % (tOld, tNew, tOld/tNew))
+            
+        '''
         if self.logger.getEffectiveLevel() >= logging.DEBUG:
             tTOT = 1000.0*(time.time()-t)
-            self.logger.debug("toImage (%dx%d, normalize=%r) took %f msec. (incl. %f msec. for array request)" % (img.width(), img.height(), normalize, tTOT, tAR))
+            self.logger.debug("toImage (%dx%d, normalize=%r) took %f msec. (incl. %f msec. for array request, gray2qimage %f msec., img.convertToFormat %f msec.)" % (img.width(), img.height(), normalize, tTOT, tAR, tG2Q, tCTF))
+        '''
             
-        return ret
+        return img
             
     def notify( self, callback, **kwargs ):
         self._arrayreq.notify(self._onNotify, package = (callback, kwargs))
@@ -188,6 +230,9 @@ class AlphaModulatedImageSource( ImageSource ):
 assert issubclass(AlphaModulatedImageSource, SourceABC)
 
 class AlphaModulatedImageRequest( object ):
+    loggingName = __name__ + ".AlphaModulatedImageRequest"
+    logger = logging.getLogger(loggingName)
+    
     def __init__( self, arrayrequest, tintColor, normalize=(0,255)):
         self._mutex = QMutex()
         self._arrayreq = arrayrequest
@@ -200,16 +245,49 @@ class AlphaModulatedImageRequest( object ):
 
     def toImage( self ):
         a = self._arrayreq.getResult()
+
+        #
+        # first, the new, faster? way
+        #
+        if _has_vigra and hasattr(vigra.colors, 'gray2qimage_ARGB32Premultiplied'):
+            img = QImage(a.shape[1], a.shape[0], QImage.Format_ARGB32_Premultiplied)
+            tintColor = np.asarray([self._tintColor.redF(), self._tintColor.greenF(), self._tintColor.blueF()], dtype=np.float32);
+            normalize = np.asarray(self._normalize, dtype=a.dtype)
+            tNew = time.time()
+            vigra.colors.alphamodulated2qimage_ARGB32Premultiplied(a, byte_view(img), tintColor, normalize) 
+            tNew = 1000.0*(time.time()-tNew)
+       
+        tNew_numpy2array = None
+        if _has_numpy2qimage:  
+            tNew_numpy2array = time.time()
+            img_numpy2array = QImage(a.shape[1], a.shape[0], QImage.Format_ARGB32_Premultiplied)
+            Converters.array2alphamodulated(a, img_numpy2array, self._tintColor.redF(), self._tintColor.greenF(), self._tintColor.blueF(), *self._normalize);
+            tNew_numpy2array = 1000.0*(time.time()-tNew_numpy2array)
+        
+        #
+        # now, the old way (note that data might be in cache already)
+        #
+        tOld = None
+        tOld = time.time()
         shape = a.shape + (4,)
         d = np.empty(shape, dtype=np.float32)
         d[:,:,0] = a[:,:]*self._tintColor.redF()
         d[:,:,1] = a[:,:]*self._tintColor.greenF()
         d[:,:,2] = a[:,:]*self._tintColor.blueF()
         d[:,:,3] = a[:,:]
-
         normalize = self._normalize
-        img = array2qimage(d, normalize)
-        return img.convertToFormat(QImage.Format_ARGB32_Premultiplied)        
+        imgOld = array2qimage(d, normalize)
+        img = imgOld.convertToFormat(QImage.Format_ARGB32_Premultiplied)        
+        tOld = 1000.0*(time.time()-tOld)
+       
+        if tOld is not None and tNew_numpy2array is not None:
+            self.logger.debug("old <-> new: %f <-> %f (numpy2array: %f) msec, speedup = %f" % (tOld, tNew, tNew_numpy2array, tOld/tNew))
+        elif tOld is not None:
+            self.logger.debug("old <-> new: %f <-> %f msec, speedup = %f" % (tOld, tNew, tOld/tNew))
+        else:
+            self.logger.debug("new: %f msec" % (tNew,))
+        
+        return img
             
     def notify( self, callback, **kwargs ):
         self._arrayreq.notify(self._onNotify, package = (callback, kwargs))
