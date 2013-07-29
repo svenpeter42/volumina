@@ -191,6 +191,10 @@ class GrayscaleImageRequest( object ):
             tTOT = 1000.0*(time.time()-t)
             self.logger.debug("toImage (%dx%d, normalize=%r) took %f msec. (incl. %f msec. for array request, gray2qimage %f msec., img.convertToFormat %f msec.)" % (img.width(), img.height(), normalize, tTOT, tAR, tG2Q, tCTF))
         '''
+        
+        if self.logger.getEffectiveLevel() >= logging.DEBUG:
+            tTOT = 1000.0*(time.time()-t)
+            self.logger.debug("toImage (%dx%d, normalize=%r) took %f msec. (incl. %f msec. for array request)" % (img.width(), img.height(), normalize, tTOT, tAR))
             
         return img
             
@@ -242,11 +246,15 @@ class AlphaModulatedImageRequest( object ):
         self._tintColor = tintColor
 
     def wait(self):
-        self._arrayreq.wait()
         return self.toImage()
 
     def toImage( self ):
+        t = time.time()
+        
+        tAR = time.time()
+        self._arrayreq.wait()
         a = self._arrayreq.getResult()
+        tAR = 1000.0*(time.time()-tAR)
 
         #
         # first, the new, faster? way
@@ -291,6 +299,12 @@ class AlphaModulatedImageRequest( object ):
             self.logger.debug("new: %f msec" % (tNew,))
         
         '''
+        
+        if self.logger.getEffectiveLevel() >= logging.DEBUG:
+            tTOT = 1000.0*(time.time()-t)
+            self.logger.debug("toImage (%dx%d, normalize=%r) took %f msec. (incl. %f msec. for array request)" % (img.width(), img.height(), normalize, tTOT, tAR))
+            
+        return img
         
         return img
             
