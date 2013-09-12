@@ -1,5 +1,6 @@
 import h5py
 import numpy
+import vigra
 
 from volumina.api import Viewer
 from volumina.pixelpipeline.datasources import LazyflowSource
@@ -10,15 +11,24 @@ from lazyflow.operators import OpCompressedCache
 
 from PyQt4.QtGui import QApplication
 
+'''
 f = h5py.File("raw.h5", 'w')
-d = (255*numpy.random.random((100,200,300))).astype(numpy.uint8)
-f.create_dataset("raw", data=d)
+data = (255*numpy.random.random((100,200,300))).astype(numpy.uint8)
+f.create_dataset("raw", data=data)
 f.close()
 
 f = h5py.File("seg.h5", 'w')
-d = (10*numpy.random.random((100,200,300))).astype(numpy.uint32)
+d = numpy.zeros((100,200,300), dtype=numpy.uint32)
+N = 200
+w = [numpy.random.randint(0,100, N),
+     numpy.random.randint(0,200, N),
+     numpy.random.randint(0,300, N)]
+d[w] = 1
+d = vigra.analysis.labelVolumeWithBackground(d)
+d, numSeg = vigra.analysis.watersheds(data.astype(numpy.float32), seeds=d)
 f.create_dataset("seg", data=d)
 f.close()
+'''
 
 ##-----
 
@@ -43,7 +53,11 @@ rawSource = mkH5source("raw.h5", "raw")
 segSource = mkH5source("seg.h5", "seg")
 
 v.addGrayscaleLayer(rawSource, name="raw")
-v.addColorTableLayer(segSource, name="seg")
+
+from volumina.pixelpipeline.datasources import LazyflowSource
+
+segSourceLf = LazyflowSource(segSource)
+v.addClickableSegmentationLayer(segSourceLf, name="seg", maxLabel=1000)
 
 v.setWindowTitle("streaming viewer")
 v.showMaximized()

@@ -214,8 +214,10 @@ class ClickableLayer( Layer ):
 #*******************************************************************************
 
 def dtype_to_default_normalize(dsource):
+    print dsource, "XXX"
+    print dsource.dtype, "YYY"
     if dsource is not None:
-        dtype = dsource.dtype()
+        dtype = dsource.dtype
     else:
         dtype = numpy.uint8
     if isinstance(dtype, numpy.dtype):
@@ -440,11 +442,14 @@ class ColortableLayer( NormalizableLayer ):
 class ClickableColortableLayer(ClickableLayer):
     colorTableChanged = pyqtSignal()
     
+    normalizeChanged = pyqtSignal(int, int, int)
+    
     def __init__( self, editor, clickFunctor, datasource , colorTable, direct=False, right=True ):
         assert isinstance(datasource, SourceABC)
         super(ClickableColortableLayer, self).__init__(datasource, editor, clickFunctor, direct=direct, right=right)
         self._colorTable = colorTable
         self.data = datasource
+        self.normalize = (0,0)
         
         self.colortableIsRandom = False
         self.zeroIsTransparent  = False

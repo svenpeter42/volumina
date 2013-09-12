@@ -74,6 +74,7 @@ class ArraySource( QObject ):
     def clean_up(self):
         self._array = None
 
+    @property
     def dtype(self):
         return self._array.dtype
 
@@ -123,13 +124,16 @@ class ArraySinkSource( ArraySource ):
 # R e l a b e l i n g A r r a y S o u r c e                                    * 
 #*******************************************************************************
 
-class RelabelingArraySource( ArraySource ):
+class RelabelingArraySource( QObject ):
     """Applies a relabeling to each request before passing it on
        Currently, it casts everything to uint8, so be careful."""
+       
     isDirty = pyqtSignal( object )
+    numberOfChannelsChanged = pyqtSignal(int) # Never emitted
+    
     def __init__( self, array ):
-        super(RelabelingArraySource, self).__init__(array)
-        self.originalData = array
+        super(RelabelingArraySource, self).__init__()
+        self._array = array
         self._relabeling = None
     
     def setRelabeling( self, relabeling ):
@@ -138,6 +142,15 @@ class RelabelingArraySource( ArraySource ):
         assert relabeling.dtype == self._array.dtype
         self._relabeling = relabeling
         self.setDirty(5*(slice(None),))
+        
+    def originalData(self, sl):
+        return self._array.request(sl).wait()
+        
+    def setDirty( self, slicing):
+        if not is_pure_slicing(slicing):
+            raise Exception('dirty region: slicing is not pure')
+        self._array.setDirty(slicing)
+        self.isDirty.emit( slicing )
 
     def clearRelabeling( self ):
         self._relabeling[:] = 0
@@ -159,8 +172,7 @@ class RelabelingArraySource( ArraySource ):
         assert(len(slicing) == len(self._array.shape)), \
             "slicing into an array of shape=%r requested, but slicing is %r" \
             % (self._array.shape, slicing)
-        a = ArrayRequest(self._array, slicing)
-        a = a.wait()
+        a = self._array.request(slicing).wait()
         
         #oldDtype = a.dtype
         if self._relabeling is not None:
@@ -246,8 +258,16 @@ class LazyflowSource( QObject ):
         self._op5.Output.notifyMetaChanged( self._checkForNumChannelsChanged )
 
     @property
+    def shape(self):
+        return self._shape
+
+    @property
     def numberOfChannels(self):
         return self._shape[-1]
+    
+    @property
+    def ndim(self):
+        return len(self._shape)
     
     def _checkForNumChannelsChanged(self, *args):
         if self._op5 and self._op5.Output.ready() and self._shape[-1] != self._op5.Output.meta.shape[-1]:
@@ -263,7 +283,8 @@ class LazyflowSource( QObject ):
     def __del__(self):
         if self._op5 is not None:
             self._op5.cleanUp()
-            
+           
+    @property
     def dtype(self):
         dtype = self._orig_outslot.meta.dtype
         assert dtype is not None, "Your LazyflowSource doesn't have a dtype! Is your lazyflow slot properly configured in setupOutputs()?"
@@ -412,6 +433,7 @@ class ConstantSource( QObject ):
     def __ne__( self, other ):
         return not ( self == other )
 
+    @property
     def dtype(self):
         return self._dtype
 
@@ -484,9 +506,10 @@ class MinMaxSource( QObject ):
             return self._rawSource._orig_outslot
         else:
             return None
-            
+           
+    @property
     def dtype(self):
-        return self._rawSource.dtype()
+        return self._rawSource.dtype
     
     def request( self, slicing ):
         rawRequest = self._rawSource.request(slicing)

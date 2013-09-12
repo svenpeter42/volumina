@@ -34,12 +34,15 @@ class ClickableSegmentationLayer(QObject):
     #whether label (int) is shown (true) or hidden (false)
     clickedValue = pyqtSignal(int, bool, QColor)
 
-    def __init__(self, seg, viewer, name=None, direct=None, parent=None, colortable=None, reuseColors=True):
+    def __init__(self, seg, viewer, name=None, direct=None, parent=None, colortable=None, reuseColors=True, maxLabel=None):
         """ seg:         segmentation image/volume (5D) 
             reuseColors: if True, colors are assigned based on the number of currently visible objects,
                          if False, a segment with 'label' is assigned colortable[label] as color
         """
         super(ClickableSegmentationLayer, self).__init__(parent)
+        
+        if maxLabel is None:
+            raise RuntimeError("need to specify a maxLabel kwarg")
 
         assert seg.ndim == 5
 
@@ -48,7 +51,7 @@ class ClickableSegmentationLayer(QObject):
         self.relabelingSource = None #RelabelingArraySource
         self._reuseColors     = reuseColors
 
-        self._M = seg.max()
+        self._M = maxLabel
         self._clickedObjects = dict() #maps from object to the label that is used for it
         self._usedLabels = set()
         self._seg = seg
@@ -116,7 +119,9 @@ class ClickableSegmentationLayer(QObject):
         self.clickedValue.emit(label, shown, color)
 
     def onClick(self, layer, pos5D, pos):
-        obj = layer.data.originalData[pos5D]
+        sl = tuple([slice(pos5D[i], pos5D[i]+1) for i in range(5)])
+        obj = int(layer.data.originalData(sl).squeeze())
+        print "CLICKED AT", pos5D, " LABEL= ", obj
         self.toggleLabel(obj)
 
 #******************************************************************************
@@ -268,8 +273,8 @@ class Viewer(QMainWindow):
         self.layerstack.append(layer)
         return (layer, source)
     
-    def addClickableSegmentationLayer(self, a, name=None, direct=False, colortable=None, reuseColors=True):
-        return ClickableSegmentationLayer(a, self, name=name, direct=direct, colortable=colortable, reuseColors=reuseColors) 
+    def addClickableSegmentationLayer(self, a, maxLabel=None, name=None, direct=False, colortable=None, reuseColors=True):
+        return ClickableSegmentationLayer(a, self, name=name, direct=direct, colortable=colortable, reuseColors=reuseColors, maxLabel=maxLabel) 
         
     def _randomColors(self, M=256):
         """Generates a pleasing color table with M entries."""
