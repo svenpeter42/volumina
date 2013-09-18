@@ -1,0 +1,360 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>volumina.slicingtools &mdash; volumina 0.6.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../static/jquery.js"></script>
+    <script type="text/javascript" src="../../static/underscore.js"></script>
+    <script type="text/javascript" src="../../static/doctools.js"></script>
+    <link rel="top" title="volumina 0.6.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for volumina.slicingtools</h1><div class="highlight"><pre>
+<span class="sd">&#39;&#39;&#39;Provide tools to work with collections of slice instances.</span>
+
+<span class="sd">A n-dimensional slicing is a sequence of n slice objects, for example:</span>
+<span class="sd">slicing = [slice(10,23), slice(None), slice(14,None)]</span>
+
+<span class="sd">The sequence has to support __iter__, __setitem__, and __getitem__,</span>
+<span class="sd">as the common Python sequence types tuple and list do.</span>
+
+<span class="sd">Additionally, a 1-dimensional slicing may consist of a single slice instance</span>
+<span class="sd">not wrapped in a sequence.</span>
+
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">PyQt4.QtCore</span> <span class="kn">import</span> <span class="n">QRect</span>
+<span class="kn">import</span> <span class="nn">itertools</span>
+
+
+<span class="c">#*******************************************************************************</span>
+<span class="c"># S l                                                                          *</span>
+<span class="c">#*******************************************************************************</span>
+
+<div class="viewcode-block" id="Sl"><a class="viewcode-back" href="../../volumina.html#volumina.slicingtools.Sl">[docs]</a><span class="k">class</span> <span class="nc">Sl</span><span class="p">(</span> <span class="nb">object</span> <span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Helper to create slicings using nice subsprict syntax.</span>
+
+<span class="sd">    sl = Sl()</span>
+<span class="sd">    slicing = sl[1:2,:]</span>
+
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">slicing</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="n">slicing</span></div>
+<span class="n">sl</span> <span class="o">=</span> <span class="n">Sl</span><span class="p">()</span>
+
+<div class="viewcode-block" id="box"><a class="viewcode-back" href="../../volumina.html#volumina.slicingtools.box">[docs]</a><span class="k">def</span> <span class="nf">box</span><span class="p">(</span> <span class="n">sl</span><span class="p">,</span> <span class="n">seq</span><span class="o">=</span><span class="nb">tuple</span> <span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Wraps a single slice with a sequence.</span>
+
+<span class="sd">    No effect on any other object.</span>
+
+<span class="sd">   &#39;&#39;&#39;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sl</span><span class="p">,</span> <span class="nb">slice</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">seq</span><span class="p">((</span><span class="n">sl</span><span class="p">,))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">sl</span>
+</div>
+<div class="viewcode-block" id="unbox"><a class="viewcode-back" href="../../volumina.html#volumina.slicingtools.unbox">[docs]</a><span class="k">def</span> <span class="nf">unbox</span><span class="p">(</span> <span class="n">slicing</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span> <span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Extracts a slice object from a sequence of slices.</span>
+
+<span class="sd">    No effect in any other case.</span>
+
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span> <span class="n">slicing</span><span class="p">,</span> <span class="s">&#39;__iter__&#39;</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">slicing</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">axis</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">slicing</span><span class="p">[</span><span class="n">axis</span><span class="p">],</span> <span class="nb">slice</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">slicing</span><span class="p">[</span><span class="n">axis</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">slicing</span>
+</div>
+<div class="viewcode-block" id="is_bounded"><a class="viewcode-back" href="../../volumina.html#volumina.slicingtools.is_bounded">[docs]</a><span class="k">def</span> <span class="nf">is_bounded</span><span class="p">(</span> <span class="n">slicing</span> <span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;For all dimensions: stop value of slice is not None &#39;&#39;&#39;</span>
+    <span class="n">slicing</span> <span class="o">=</span> <span class="n">box</span><span class="p">(</span><span class="n">slicing</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">all</span><span class="p">((</span><span class="n">sl</span><span class="o">.</span><span class="n">stop</span> <span class="o">!=</span> <span class="bp">None</span> <span class="k">for</span> <span class="n">sl</span> <span class="ow">in</span> <span class="n">slicing</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="make_bounded"><a class="viewcode-back" href="../../volumina.html#volumina.slicingtools.make_bounded">[docs]</a><span class="k">def</span> <span class="nf">make_bounded</span><span class="p">(</span><span class="n">slicing</span><span class="p">,</span> <span class="n">shape</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Convert unbounded slices to the size of the corresponding</span>
+<span class="sd">    dimension.</span>
+
+<span class="sd">    &gt;&gt;&gt; make_bounded((slice(0, 1), slice(None)), shape=(10, 10, 10))</span>
+<span class="sd">    (slice(0, 1), slice(0, 10), slice(0, 10))</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">slicing</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+    <span class="n">slicing</span> <span class="o">=</span> <span class="n">index2slice</span><span class="p">(</span><span class="n">slicing</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">slc</span><span class="p">,</span> <span class="n">dim</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">izip_longest</span><span class="p">(</span><span class="n">slicing</span><span class="p">,</span> <span class="n">shape</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">slc</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">slc</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="bp">None</span><span class="p">)</span>
+        <span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">step</span> <span class="o">=</span> <span class="n">slc</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="n">slc</span><span class="o">.</span><span class="n">stop</span><span class="p">,</span> <span class="n">slc</span><span class="o">.</span><span class="n">step</span>
+        <span class="k">if</span> <span class="n">start</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="n">stop</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">stop</span> <span class="o">=</span> <span class="n">dim</span>
+        <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">step</span><span class="p">))</span>
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="is_pure_slicing"><a class="viewcode-back" href="../../volumina.html#volumina.slicingtools.is_pure_slicing">[docs]</a><span class="k">def</span> <span class="nf">is_pure_slicing</span><span class="p">(</span> <span class="n">slicing</span> <span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Test if slicing is a single slice instance or sequence of instances.</span>
+
+<span class="sd">    Impure slicings may additionally contain integer indices,</span>
+<span class="sd">    ellipses, booleans, or newaxis.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">slicing</span> <span class="o">=</span> <span class="n">box</span><span class="p">(</span><span class="n">slicing</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">slicing</span><span class="p">,</span> <span class="s">&#39;__iter__&#39;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">False</span>
+    <span class="k">for</span> <span class="n">thing</span> <span class="ow">in</span> <span class="n">slicing</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">thing</span><span class="p">,</span> <span class="nb">slice</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">False</span>
+    <span class="k">return</span> <span class="bp">True</span>
+</div>
+<div class="viewcode-block" id="slicing2rect"><a class="viewcode-back" href="../../volumina.html#volumina.slicingtools.slicing2rect">[docs]</a><span class="k">def</span> <span class="nf">slicing2rect</span><span class="p">(</span><span class="n">slicing</span><span class="p">):</span>
+    <span class="n">h</span><span class="p">,</span> <span class="n">v</span> <span class="o">=</span> <span class="n">slicing</span>
+    <span class="k">return</span> <span class="n">QRect</span><span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="n">v</span><span class="o">.</span><span class="n">start</span><span class="p">,</span>
+                 <span class="n">h</span><span class="o">.</span><span class="n">stop</span> <span class="o">-</span> <span class="n">h</span><span class="o">.</span><span class="n">start</span><span class="p">,</span>
+                 <span class="n">v</span><span class="o">.</span><span class="n">stop</span> <span class="o">-</span> <span class="n">v</span><span class="o">.</span><span class="n">start</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="rect2slicing"><a class="viewcode-back" href="../../volumina.html#volumina.slicingtools.rect2slicing">[docs]</a><span class="k">def</span> <span class="nf">rect2slicing</span><span class="p">(</span><span class="n">qrect</span><span class="p">,</span> <span class="n">seq</span><span class="o">=</span><span class="nb">tuple</span><span class="p">):</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">seq</span><span class="p">((</span><span class="nb">slice</span><span class="p">(</span><span class="n">qrect</span><span class="o">.</span><span class="n">x</span><span class="p">(),</span> <span class="n">qrect</span><span class="o">.</span><span class="n">x</span><span class="p">()</span> <span class="o">+</span> <span class="n">qrect</span><span class="o">.</span><span class="n">width</span><span class="p">()),</span>
+                  <span class="nb">slice</span><span class="p">(</span><span class="n">qrect</span><span class="o">.</span><span class="n">y</span><span class="p">(),</span> <span class="n">qrect</span><span class="o">.</span><span class="n">y</span><span class="p">()</span> <span class="o">+</span> <span class="n">qrect</span><span class="o">.</span><span class="n">height</span><span class="p">())))</span>
+    <span class="k">return</span> <span class="n">result</span>
+</div>
+<div class="viewcode-block" id="slicing2shape"><a class="viewcode-back" href="../../volumina.html#volumina.slicingtools.slicing2shape">[docs]</a><span class="k">def</span> <span class="nf">slicing2shape</span><span class="p">(</span> <span class="n">slicing</span> <span class="p">):</span>
+    <span class="k">assert</span> <span class="n">is_bounded</span><span class="p">(</span> <span class="n">slicing</span> <span class="p">)</span>
+    <span class="n">slicing</span> <span class="o">=</span> <span class="n">box</span><span class="p">(</span><span class="n">slicing</span><span class="p">)</span>
+    <span class="n">shape</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">sl</span> <span class="ow">in</span> <span class="n">slicing</span><span class="p">:</span>
+        <span class="n">shape</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sl</span><span class="o">.</span><span class="n">stop</span> <span class="o">-</span> <span class="n">sl</span><span class="o">.</span><span class="n">start</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="index2slice"><a class="viewcode-back" href="../../volumina.html#volumina.slicingtools.index2slice">[docs]</a><span class="k">def</span> <span class="nf">index2slice</span><span class="p">(</span> <span class="n">slicing</span> <span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Convert integer indices to proper slice instances.</span>
+
+<span class="sd">    For example: (2, slice(4,8)) =&gt; (slice(2,3), slice(4,8))</span>
+
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">pure_sl</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">slicing</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">pure_sl</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pure_sl</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">index</span> <span class="o">=</span> <span class="n">pure_sl</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">pure_sl</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">pure_sl</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="intersection"><a class="viewcode-back" href="../../volumina.html#volumina.slicingtools.intersection">[docs]</a><span class="k">def</span> <span class="nf">intersection</span><span class="p">(</span> <span class="n">lhs</span><span class="p">,</span> <span class="n">rhs</span> <span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Calculate intersection between two slicings of same dimensions.</span>
+
+<span class="sd">    Intersection is represented as a slicing, too.</span>
+<span class="sd">    Returns None if the intersection is empty.</span>
+
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">lhs</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">rhs</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">is_pure_slicing</span><span class="p">(</span><span class="n">lhs</span><span class="p">)</span> <span class="ow">and</span> <span class="n">is_pure_slicing</span><span class="p">(</span><span class="n">rhs</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_min_stop</span><span class="p">(</span> <span class="n">stop1</span><span class="p">,</span> <span class="n">stop2</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="n">stop1</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">stop2</span>
+        <span class="k">return</span> <span class="nb">min</span><span class="p">(</span><span class="n">stop1</span><span class="p">,</span> <span class="n">stop2</span><span class="p">)</span>
+    <span class="n">dim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">lhs</span><span class="p">)</span>
+    <span class="n">inter</span> <span class="o">=</span> <span class="p">[</span><span class="bp">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">dim</span>
+    <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="n">dim</span><span class="p">):</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">lhs</span><span class="p">[</span><span class="n">d</span><span class="p">]</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="n">rhs</span><span class="p">[</span><span class="n">d</span><span class="p">]</span><span class="o">.</span><span class="n">start</span><span class="p">)</span>
+        <span class="n">stop</span> <span class="o">=</span> <span class="n">_min_stop</span><span class="p">(</span><span class="n">lhs</span><span class="p">[</span><span class="n">d</span><span class="p">]</span><span class="o">.</span><span class="n">stop</span><span class="p">,</span> <span class="n">rhs</span><span class="p">[</span><span class="n">d</span><span class="p">]</span><span class="o">.</span><span class="n">stop</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">start</span> <span class="ow">and</span> <span class="n">stop</span><span class="p">:</span>
+            <span class="k">if</span><span class="p">(</span> <span class="p">(</span><span class="n">stop</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">):</span>
+                <span class="k">return</span> <span class="bp">None</span>
+        <span class="n">inter</span><span class="p">[</span><span class="n">d</span><span class="p">]</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">inter</span><span class="p">)</span>
+
+<span class="c">#*******************************************************************************</span>
+<span class="c"># S l i c e P r o j e c t i o n                                                *</span>
+<span class="c">#*******************************************************************************</span>
+</div>
+<div class="viewcode-block" id="SliceProjection"><a class="viewcode-back" href="../../volumina.html#volumina.slicingtools.SliceProjection">[docs]</a><span class="k">class</span> <span class="nc">SliceProjection</span><span class="p">(</span> <span class="nb">object</span> <span class="p">):</span>
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="SliceProjection.abscissa"><a class="viewcode-back" href="../../volumina.html#volumina.slicingtools.SliceProjection.abscissa">[docs]</a>    <span class="k">def</span> <span class="nf">abscissa</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_abscissa</span></div>
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="SliceProjection.ordinate"><a class="viewcode-back" href="../../volumina.html#volumina.slicingtools.SliceProjection.ordinate">[docs]</a>    <span class="k">def</span> <span class="nf">ordinate</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ordinate</span></div>
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="SliceProjection.along"><a class="viewcode-back" href="../../volumina.html#volumina.slicingtools.SliceProjection.along">[docs]</a>    <span class="k">def</span> <span class="nf">along</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_along</span></div>
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="SliceProjection.domainDim"><a class="viewcode-back" href="../../volumina.html#volumina.slicingtools.SliceProjection.domainDim">[docs]</a>    <span class="k">def</span> <span class="nf">domainDim</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dim</span>
+</div>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">abscissa</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">ordinate</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">along</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">]</span> <span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">along</span><span class="p">,</span> <span class="s">&quot;__iter__&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_abscissa</span> <span class="o">=</span> <span class="n">abscissa</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ordinate</span> <span class="o">=</span> <span class="n">ordinate</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_along</span> <span class="o">=</span> <span class="n">along</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">along</span><span class="p">)</span> <span class="o">+</span> <span class="mi">2</span>
+
+        <span class="c"># sanity checks</span>
+        <span class="n">axes_set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">along</span><span class="p">)</span>
+        <span class="n">axes_set</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">abscissa</span><span class="p">)</span>
+        <span class="n">axes_set</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ordinate</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">axes_set</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dim</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;duplicate axes&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">axes_set</span> <span class="o">!=</span> <span class="nb">set</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dim</span><span class="p">)):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;axes not from range(0,dim)&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="SliceProjection.handednessSwitched"><a class="viewcode-back" href="../../volumina.html#volumina.slicingtools.SliceProjection.handednessSwitched">[docs]</a>    <span class="k">def</span> <span class="nf">handednessSwitched</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ordinate</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">abscissa</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">return</span> <span class="bp">False</span>
+</div>
+<div class="viewcode-block" id="SliceProjection.domain"><a class="viewcode-back" href="../../volumina.html#volumina.slicingtools.SliceProjection.domain">[docs]</a>    <span class="k">def</span> <span class="nf">domain</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">through</span><span class="p">,</span> <span class="n">abscissa_range</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span> <span class="n">ordinate_range</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="bp">None</span><span class="p">,</span><span class="bp">None</span><span class="p">)</span> <span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Slicing describing the embedding of the 2d slice in the n-dim domain space.</span>
+
+<span class="sd">        Use this slicing to cut out a n-dim subspace containing the desired slice.</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">through</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">along</span><span class="p">)</span>
+        <span class="n">slicing</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">domainDim</span><span class="p">)</span>
+        <span class="n">slicing</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">abscissa</span><span class="p">]</span> <span class="o">=</span> <span class="n">abscissa_range</span>
+        <span class="n">slicing</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">ordinate</span><span class="p">]</span> <span class="o">=</span> <span class="n">ordinate_range</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">along</span><span class="p">)):</span>
+            <span class="n">slicing</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">along</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">through</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">through</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">slicing</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">domainArray</span> <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Projects the n-d slicing &#39;domainArray&#39; to 2 dimensions&quot;&quot;&quot;</span>
+
+        <span class="k">assert</span> <span class="n">domainArray</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">domainDim</span><span class="p">,</span> <span class="s">&quot;ndim </span><span class="si">%d</span><span class="s"> != </span><span class="si">%d</span><span class="s"> (domainArray.shape=</span><span class="si">%r</span><span class="s">, domainDim=</span><span class="si">%r</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">domainArray</span><span class="o">.</span><span class="n">ndim</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">domainDim</span><span class="p">,</span> <span class="n">domainArray</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">domainDim</span><span class="p">)</span>
+        <span class="n">slicing</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">domainDim</span><span class="o">*</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">slicing</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_abscissa</span><span class="p">],</span> <span class="n">slicing</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_ordinate</span><span class="p">]</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="bp">None</span><span class="p">,</span><span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="bp">None</span><span class="p">,</span><span class="bp">None</span><span class="p">)</span>
+
+        <span class="n">projectedArray</span> <span class="o">=</span> <span class="n">domainArray</span><span class="p">[</span><span class="n">slicing</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="n">projectedArray</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">,</span> <span class="s">&quot;dim </span><span class="si">%d</span><span class="s"> != 2&quot;</span> <span class="o">%</span> <span class="n">projectedArray</span><span class="o">.</span><span class="n">ndim</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">handednessSwitched</span><span class="p">():</span>
+            <span class="n">projectedArray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">swapaxes</span><span class="p">(</span><span class="n">projectedArray</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">projectedArray</span>
+
+<span class="c">#*******************************************************************************</span>
+<span class="c"># T e s t                                                                      *</span>
+<span class="c">#*******************************************************************************</span>
+</div>
+<span class="kn">import</span> <span class="nn">unittest</span> <span class="kn">as</span> <span class="nn">ut</span>
+
+<div class="viewcode-block" id="SlTest"><a class="viewcode-back" href="../../volumina.html#volumina.slicingtools.SlTest">[docs]</a><span class="k">class</span> <span class="nc">SlTest</span><span class="p">(</span> <span class="n">ut</span><span class="o">.</span><span class="n">TestCase</span> <span class="p">):</span>
+<div class="viewcode-block" id="SlTest.runTest"><a class="viewcode-back" href="../../volumina.html#volumina.slicingtools.SlTest.runTest">[docs]</a>    <span class="k">def</span> <span class="nf">runTest</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">sl</span><span class="p">[</span><span class="mi">1</span><span class="p">,:</span><span class="mi">34</span><span class="p">,:],</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">34</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="bp">None</span><span class="p">)))</span>
+</div></div>
+<div class="viewcode-block" id="toolsTest"><a class="viewcode-back" href="../../volumina.html#volumina.slicingtools.toolsTest">[docs]</a><span class="k">class</span> <span class="nc">toolsTest</span><span class="p">(</span> <span class="n">ut</span><span class="o">.</span><span class="n">TestCase</span> <span class="p">):</span>
+<div class="viewcode-block" id="toolsTest.testIntersection"><a class="viewcode-back" href="../../volumina.html#volumina.slicingtools.toolsTest.testIntersection">[docs]</a>    <span class="k">def</span> <span class="nf">testIntersection</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="n">intersection</span><span class="p">(</span><span class="n">sl</span><span class="p">[</span><span class="mi">5</span><span class="p">:</span><span class="mi">8</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span><span class="mi">7</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span><span class="mi">9</span><span class="p">],</span><span class="n">sl</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">50</span><span class="p">,</span> <span class="mi">0</span><span class="p">:</span><span class="mi">50</span><span class="p">,</span><span class="mi">4</span><span class="p">:</span><span class="mi">5</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">sl</span><span class="p">[</span><span class="mi">5</span><span class="p">:</span><span class="mi">8</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span><span class="mi">7</span><span class="p">,</span> <span class="mi">4</span><span class="p">:</span><span class="mi">5</span><span class="p">])</span>
+        <span class="n">ni</span> <span class="o">=</span> <span class="n">intersection</span><span class="p">(</span><span class="n">sl</span><span class="p">[</span><span class="mi">5</span><span class="p">:</span><span class="mi">8</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span><span class="mi">7</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span><span class="mi">9</span><span class="p">],</span><span class="n">sl</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">50</span><span class="p">,</span> <span class="mi">0</span><span class="p">:</span><span class="mi">50</span><span class="p">,</span><span class="mi">9</span><span class="p">:</span><span class="mi">10</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">ni</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="toolsTest.testIndex2slice"><a class="viewcode-back" href="../../volumina.html#volumina.slicingtools.toolsTest.testIndex2slice">[docs]</a>    <span class="k">def</span> <span class="nf">testIndex2slice</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="n">pure</span> <span class="o">=</span> <span class="n">index2slice</span><span class="p">(</span><span class="n">sl</span><span class="p">[</span><span class="mi">3</span><span class="p">:</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,:,</span><span class="mi">10</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">pure</span><span class="p">,</span> <span class="n">sl</span><span class="p">[</span><span class="mi">3</span><span class="p">:</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">:</span><span class="mi">6</span><span class="p">,:,</span><span class="mi">10</span><span class="p">:</span><span class="mi">11</span><span class="p">])</span>
+</div></div>
+<div class="viewcode-block" id="SliceProjectionTest"><a class="viewcode-back" href="../../volumina.html#volumina.slicingtools.SliceProjectionTest">[docs]</a><span class="k">class</span> <span class="nc">SliceProjectionTest</span><span class="p">(</span> <span class="n">ut</span><span class="o">.</span><span class="n">TestCase</span> <span class="p">):</span>
+<div class="viewcode-block" id="SliceProjectionTest.testArgumentCheck"><a class="viewcode-back" href="../../volumina.html#volumina.slicingtools.SliceProjectionTest.testArgumentCheck">[docs]</a>    <span class="k">def</span> <span class="nf">testArgumentCheck</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="n">SliceProjection</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,[</span><span class="mi">0</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">])</span>
+        <span class="n">SliceProjection</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">,[</span><span class="mi">3</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">4</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="n">SliceProjection</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">,[</span><span class="mi">3</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">7</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="n">SliceProjection</span> <span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">,[</span><span class="mi">3</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">4</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="n">SliceProjection</span> <span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">5</span><span class="p">,[</span><span class="mi">3</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">4</span><span class="p">])</span>
+</div>
+<div class="viewcode-block" id="SliceProjectionTest.testDomain"><a class="viewcode-back" href="../../volumina.html#volumina.slicingtools.SliceProjectionTest.testDomain">[docs]</a>    <span class="k">def</span> <span class="nf">testDomain</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="n">sp</span> <span class="o">=</span> <span class="n">SliceProjection</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">,[</span><span class="mi">3</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">4</span><span class="p">])</span>
+        <span class="n">unbounded</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">domain</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span><span class="mi">23</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">unbounded</span><span class="p">,</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">23</span><span class="p">,</span><span class="mi">24</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">)))</span>
+
+        <span class="n">bounded</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">domain</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span><span class="mi">23</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span><span class="mi">9</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span><span class="bp">None</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">bounded</span><span class="p">,</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">23</span><span class="p">,</span><span class="mi">24</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span><span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span><span class="mi">9</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">)))</span>
+</div>
+<div class="viewcode-block" id="SliceProjectionTest.testSliceDomain"><a class="viewcode-back" href="../../volumina.html#volumina.slicingtools.SliceProjectionTest.testSliceDomain">[docs]</a>    <span class="k">def</span> <span class="nf">testSliceDomain</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="n">sp</span> <span class="o">=</span> <span class="n">SliceProjection</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">,[</span><span class="mi">3</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">4</span><span class="p">])</span>
+        <span class="n">slicing</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">domain</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">3</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="bp">None</span><span class="p">))</span>
+        <span class="n">raw</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">100</span><span class="p">,(</span><span class="mi">10</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">128</span><span class="p">,</span><span class="mi">3</span><span class="p">))</span>
+        <span class="n">domainArray</span> <span class="o">=</span> <span class="n">raw</span><span class="p">[</span><span class="n">slicing</span><span class="p">]</span>
+        <span class="n">sl</span> <span class="o">=</span> <span class="n">sp</span><span class="p">(</span><span class="n">domainArray</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">sl</span> <span class="o">==</span> <span class="n">raw</span><span class="p">[</span><span class="mi">7</span><span class="p">,:,</span><span class="mi">1</span><span class="p">:</span><span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">swapaxes</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">)))</span>
+</div></div>
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">ut</span><span class="o">.</span><span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Bernhard X. Kausler, Thorben Kröger, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

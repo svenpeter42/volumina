@@ -1,0 +1,333 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>volumina.view3d.GenerateModelsFromLabels_thread &mdash; volumina 0.6.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../../static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../static/jquery.js"></script>
+    <script type="text/javascript" src="../../../static/underscore.js"></script>
+    <script type="text/javascript" src="../../../static/doctools.js"></script>
+    <link rel="top" title="volumina 0.6.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for volumina.view3d.GenerateModelsFromLabels_thread</h1><div class="highlight"><pre>
+<span class="kn">from</span> <span class="nn">vtk</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">PyQt4.QtCore</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">PyQt4.QtGui</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">import</span> <span class="nn">h5py</span>
+<span class="kn">from</span> <span class="nn">numpy2vtk</span> <span class="kn">import</span> <span class="n">toVtkImageData</span>
+
+<span class="c">#*******************************************************************************</span>
+<span class="c"># M e s h E x t r a c t o r                                                    *</span>
+<span class="c">#*******************************************************************************</span>
+
+<div class="viewcode-block" id="MeshExtractor"><a class="viewcode-back" href="../../../volumina.view3d.html#volumina.view3d.GenerateModelsFromLabels_thread.MeshExtractor">[docs]</a><span class="k">class</span> <span class="nc">MeshExtractor</span><span class="p">(</span><span class="n">QThread</span><span class="p">):</span>
+    <span class="n">done</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">()</span>
+    <span class="n">progress</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">newStep</span>  <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">QThread</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inputImage</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">numpyVolume</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">meshes</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">suppressLabels</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">smooth</span> <span class="o">=</span> <span class="bp">True</span>
+    
+<div class="viewcode-block" id="MeshExtractor.progressCallback"><a class="viewcode-back" href="../../../volumina.view3d.html#volumina.view3d.GenerateModelsFromLabels_thread.MeshExtractor.progressCallback">[docs]</a>    <span class="k">def</span> <span class="nf">progressCallback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">caller</span><span class="p">,</span> <span class="n">eventId</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">progress</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">caller</span><span class="o">.</span><span class="n">GetProgress</span><span class="p">())</span>
+    </div>
+<div class="viewcode-block" id="MeshExtractor.SetInput"><a class="viewcode-back" href="../../../volumina.view3d.html#volumina.view3d.GenerateModelsFromLabels_thread.MeshExtractor.SetInput">[docs]</a>    <span class="k">def</span> <span class="nf">SetInput</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">numpyVolume</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">numpyVolume</span> <span class="o">=</span> <span class="n">numpyVolume</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
+<div class="viewcode-block" id="MeshExtractor.SuppressLabels"><a class="viewcode-back" href="../../../volumina.view3d.html#volumina.view3d.GenerateModelsFromLabels_thread.MeshExtractor.SuppressLabels">[docs]</a>    <span class="k">def</span> <span class="nf">SuppressLabels</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">labelList</span><span class="p">):</span>
+        <span class="k">print</span> <span class="s">&quot;will suppress labels =&quot;</span><span class="p">,</span> <span class="n">labelList</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">suppressLabels</span> <span class="o">=</span> <span class="n">labelList</span></div>
+<div class="viewcode-block" id="MeshExtractor.Smooth"><a class="viewcode-back" href="../../../volumina.view3d.html#volumina.view3d.GenerateModelsFromLabels_thread.MeshExtractor.Smooth">[docs]</a>    <span class="k">def</span> <span class="nf">Smooth</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">smooth</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">smooth</span> <span class="o">=</span> <span class="n">smooth</span>
+    </div>
+<div class="viewcode-block" id="MeshExtractor.run"><a class="viewcode-back" href="../../../volumina.view3d.html#volumina.view3d.GenerateModelsFromLabels_thread.MeshExtractor.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">print</span> <span class="s">&quot;MeshExtractor::run()&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">meshes</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">numpyVolume</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s">&quot;You need to call SetInput() first&quot;</span><span class="p">)</span>
+   
+        <span class="bp">self</span><span class="o">.</span><span class="n">inputImage</span> <span class="o">=</span> <span class="n">toVtkImageData</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">numpyVolume</span><span class="p">)</span>
+   
+        <span class="c">#Create all of the classes we will need   </span>
+        <span class="n">histogram</span>     <span class="o">=</span> <span class="n">vtkImageAccumulate</span><span class="p">()</span>
+        <span class="n">discreteCubes</span> <span class="o">=</span> <span class="n">vtkDiscreteMarchingCubes</span><span class="p">()</span>
+        <span class="n">smoother</span>      <span class="o">=</span> <span class="n">vtkWindowedSincPolyDataFilter</span><span class="p">()</span>
+        <span class="n">selector</span>      <span class="o">=</span> <span class="n">vtkThreshold</span><span class="p">()</span>
+        <span class="n">scalarsOff</span>    <span class="o">=</span> <span class="n">vtkMaskFields</span><span class="p">()</span>
+        <span class="n">geometry</span>      <span class="o">=</span> <span class="n">vtkGeometryFilter</span><span class="p">()</span>
+        <span class="c">#writer        = vtkXMLPolyDataWriter()</span>
+
+        <span class="c">#Define all of the variables</span>
+        <span class="n">startLabel</span>          <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">endLabel</span>            <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">numpyVolume</span><span class="p">[:])</span>
+        <span class="n">smoothingIterations</span> <span class="o">=</span> <span class="mi">15</span>
+        <span class="n">passBand</span>            <span class="o">=</span> <span class="mf">0.001</span>
+        <span class="n">featureAngle</span>        <span class="o">=</span> <span class="mf">120.0</span>
+
+        <span class="c">#Generate models from labels</span>
+        <span class="c">#1) Read the meta file</span>
+        <span class="c">#2) Generate a histogram of the labels</span>
+        <span class="c">#3) Generate models from the labeled volume</span>
+        <span class="c">#4) Smooth the models</span>
+        <span class="c">#5) Output each model into a separate file</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">newStep</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="s">&quot;Histogram&quot;</span><span class="p">)</span>
+        <span class="n">qDebug</span><span class="p">(</span><span class="s">&quot;*** Histogram ***&quot;</span><span class="p">)</span>
+        <span class="n">histogram</span><span class="o">.</span><span class="n">SetInput</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inputImage</span><span class="p">)</span>
+        <span class="n">histogram</span><span class="o">.</span><span class="n">AddObserver</span><span class="p">(</span><span class="n">vtkCommand</span><span class="o">.</span><span class="n">ProgressEvent</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">progressCallback</span><span class="p">)</span>
+        <span class="n">histogram</span><span class="o">.</span><span class="n">SetComponentExtent</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">endLabel</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">histogram</span><span class="o">.</span><span class="n">SetComponentOrigin</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">histogram</span><span class="o">.</span><span class="n">SetComponentSpacing</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">histogram</span><span class="o">.</span><span class="n">Update</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">newStep</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="s">&quot;Marching Cubes&quot;</span><span class="p">)</span>
+        <span class="n">qDebug</span><span class="p">(</span><span class="s">&quot;*** Marching Cubes ***&quot;</span><span class="p">)</span>
+        <span class="n">discreteCubes</span><span class="o">.</span><span class="n">SetInput</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inputImage</span><span class="p">)</span>
+        <span class="n">discreteCubes</span><span class="o">.</span><span class="n">AddObserver</span><span class="p">(</span><span class="n">vtkCommand</span><span class="o">.</span><span class="n">ProgressEvent</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">progressCallback</span><span class="p">)</span>
+        <span class="n">discreteCubes</span><span class="o">.</span><span class="n">GenerateValues</span><span class="p">(</span><span class="n">endLabel</span> <span class="o">-</span> <span class="n">startLabel</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">startLabel</span><span class="p">,</span> <span class="n">endLabel</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">smooth</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">newStep</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="s">&quot;Smoothing&quot;</span><span class="p">)</span>
+            <span class="n">qDebug</span><span class="p">(</span><span class="s">&quot;*** Smoothing ***&quot;</span><span class="p">)</span>
+            <span class="n">smoother</span><span class="o">.</span><span class="n">SetInput</span><span class="p">(</span><span class="n">discreteCubes</span><span class="o">.</span><span class="n">GetOutput</span><span class="p">())</span>
+            <span class="n">smoother</span><span class="o">.</span><span class="n">AddObserver</span><span class="p">(</span><span class="n">vtkCommand</span><span class="o">.</span><span class="n">ProgressEvent</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">progressCallback</span><span class="p">)</span>
+            <span class="n">smoother</span><span class="o">.</span><span class="n">SetNumberOfIterations</span><span class="p">(</span><span class="n">smoothingIterations</span><span class="p">)</span>
+            <span class="n">smoother</span><span class="o">.</span><span class="n">BoundarySmoothingOff</span><span class="p">()</span>
+            <span class="n">smoother</span><span class="o">.</span><span class="n">FeatureEdgeSmoothingOff</span><span class="p">()</span>
+            <span class="n">smoother</span><span class="o">.</span><span class="n">SetFeatureAngle</span><span class="p">(</span><span class="n">featureAngle</span><span class="p">)</span>
+            <span class="n">smoother</span><span class="o">.</span><span class="n">SetPassBand</span><span class="p">(</span><span class="n">passBand</span><span class="p">)</span>
+            <span class="n">smoother</span><span class="o">.</span><span class="n">NonManifoldSmoothingOn</span><span class="p">()</span>
+            <span class="n">smoother</span><span class="o">.</span><span class="n">NormalizeCoordinatesOn</span><span class="p">()</span>
+            <span class="n">smoother</span><span class="o">.</span><span class="n">Update</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">newStep</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="s">&quot;Preparing meshes&quot;</span><span class="p">)</span>
+        <span class="n">qDebug</span><span class="p">(</span><span class="s">&quot;*** Preparing meshes ***&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">smooth</span><span class="p">:</span>
+            <span class="n">selector</span><span class="o">.</span><span class="n">SetInput</span><span class="p">(</span><span class="n">smoother</span><span class="o">.</span><span class="n">GetOutput</span><span class="p">())</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">selector</span><span class="o">.</span><span class="n">SetInput</span><span class="p">(</span><span class="n">discreteCubes</span><span class="o">.</span><span class="n">GetOutput</span><span class="p">())</span>
+        <span class="n">selector</span><span class="o">.</span><span class="n">SetInputArrayToProcess</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
+                                        <span class="n">vtkDataObject</span><span class="o">.</span><span class="n">FIELD_ASSOCIATION_CELLS</span><span class="p">,</span>
+                                        <span class="n">vtkDataSetAttributes</span><span class="o">.</span><span class="n">SCALARS</span><span class="p">)</span>
+
+        <span class="c">#Strip the scalars from the output</span>
+        <span class="n">scalarsOff</span><span class="o">.</span><span class="n">SetInput</span><span class="p">(</span><span class="n">selector</span><span class="o">.</span><span class="n">GetOutput</span><span class="p">())</span>
+        <span class="n">scalarsOff</span><span class="o">.</span><span class="n">CopyAttributeOff</span><span class="p">(</span><span class="n">vtkMaskFields</span><span class="o">.</span><span class="n">POINT_DATA</span><span class="p">,</span>
+                                    <span class="n">vtkDataSetAttributes</span><span class="o">.</span><span class="n">SCALARS</span><span class="p">)</span>
+        <span class="n">scalarsOff</span><span class="o">.</span><span class="n">CopyAttributeOff</span><span class="p">(</span><span class="n">vtkMaskFields</span><span class="o">.</span><span class="n">CELL_DATA</span><span class="p">,</span>
+                                    <span class="n">vtkDataSetAttributes</span><span class="o">.</span><span class="n">SCALARS</span><span class="p">)</span>
+
+        <span class="n">geometry</span><span class="o">.</span><span class="n">SetInput</span><span class="p">(</span><span class="n">scalarsOff</span><span class="o">.</span><span class="n">GetOutput</span><span class="p">())</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">newStep</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="s">&quot;Writing meshes&quot;</span><span class="p">)</span>
+        <span class="n">qDebug</span><span class="p">(</span><span class="s">&quot;*** Writing meshes ***&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">startLabel</span><span class="p">,</span> <span class="n">endLabel</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress</span><span class="o">.</span><span class="n">emit</span><span class="p">((</span><span class="n">i</span><span class="o">-</span><span class="n">startLabel</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">/</span><span class="nb">float</span><span class="p">(</span><span class="n">endLabel</span><span class="o">-</span><span class="n">startLabel</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+            
+            <span class="k">if</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">suppressLabels</span><span class="p">:</span>
+                <span class="k">print</span> <span class="s">&quot; - suppressed label:&quot;</span><span class="p">,</span><span class="n">i</span>
+                <span class="k">continue</span>
+            
+            <span class="c">#see if the label exists, if not skip it</span>
+            <span class="n">frequency</span> <span class="o">=</span> <span class="n">histogram</span><span class="o">.</span><span class="n">GetOutput</span><span class="p">()</span><span class="o">.</span><span class="n">GetPointData</span><span class="p">()</span><span class="o">.</span><span class="n">GetScalars</span><span class="p">()</span><span class="o">.</span><span class="n">GetTuple1</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">frequency</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+                <span class="k">print</span> <span class="s">&quot; - labels </span><span class="si">%d</span><span class="s"> does not occur&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">i</span><span class="p">)</span>
+                <span class="k">continue</span>
+
+            <span class="c">#select the cells for a given label</span>
+            <span class="n">selector</span><span class="o">.</span><span class="n">ThresholdBetween</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+            <span class="n">selector</span><span class="o">.</span><span class="n">Update</span><span class="p">()</span>
+            
+            <span class="c">#this seems to be a bug in VTK, why should this call be necessary?</span>
+            <span class="n">geometry</span><span class="o">.</span><span class="n">GetOutput</span><span class="p">()</span><span class="o">.</span><span class="n">Update</span><span class="p">()</span>
+        
+            <span class="c">#FIXME</span>
+            <span class="c">#In ILASTIK, the axes 0 and 2 are flipped.</span>
+            <span class="c">#We have to correct for that here</span>
+            <span class="c">#&lt;begin&gt; FIXME</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="n">vtkTransformPolyDataFilter</span><span class="p">()</span>
+            <span class="n">t</span> <span class="o">=</span> <span class="n">vtkTransform</span><span class="p">()</span>
+            <span class="n">t</span><span class="o">.</span><span class="n">Scale</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">t</span><span class="o">.</span><span class="n">RotateY</span><span class="p">(</span><span class="mi">90</span><span class="p">)</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">SetTransform</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">SetInput</span><span class="p">(</span><span class="n">geometry</span><span class="o">.</span><span class="n">GetOutput</span><span class="p">())</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">Update</span><span class="p">()</span>
+            <span class="c">#&lt;end&gt; FIXME</span>
+            
+            <span class="n">poly</span> <span class="o">=</span> <span class="n">vtkPolyData</span><span class="p">()</span>
+            <span class="n">poly</span><span class="o">.</span><span class="n">DeepCopy</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">GetOutput</span><span class="p">())</span>
+            
+            <span class="k">print</span> <span class="s">&quot; - adding mesh for label </span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">meshes</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">poly</span>
+            
+        <span class="k">print</span> <span class="s">&quot; ==&gt; list of labels:&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">meshes</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+        <span class="c">#print &quot;MeshExtractor::done&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">done</span><span class="o">.</span><span class="n">emit</span><span class="p">()</span>
+
+<span class="c">#*******************************************************************************</span>
+<span class="c"># M e s h E x t r a c t o r D i a l o g                                        *</span>
+<span class="c">#*******************************************************************************</span>
+</div></div>
+<div class="viewcode-block" id="MeshExtractorDialog"><a class="viewcode-back" href="../../../volumina.view3d.html#volumina.view3d.GenerateModelsFromLabels_thread.MeshExtractorDialog">[docs]</a><span class="k">class</span> <span class="nc">MeshExtractorDialog</span><span class="p">(</span><span class="n">QDialog</span><span class="p">):</span>
+    <span class="n">finished</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">()</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">QDialog</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">currentStep</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">extractor</span>   <span class="o">=</span> <span class="bp">None</span>
+    
+        <span class="n">l</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setLayout</span><span class="p">(</span><span class="n">l</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">overallProgress</span> <span class="o">=</span> <span class="n">QProgressBar</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">overallProgress</span><span class="o">.</span><span class="n">setRange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">overallProgress</span><span class="o">.</span><span class="n">setFormat</span><span class="p">(</span><span class="s">&quot;step %v of 5&quot;</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">currentStepProgress</span> <span class="o">=</span> <span class="n">QProgressBar</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">currentStepProgress</span><span class="o">.</span><span class="n">setRange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">currentStepProgress</span><span class="o">.</span><span class="n">setFormat</span><span class="p">(</span><span class="s">&quot;%p %&quot;</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">overallLabel</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s">&quot;Overall progress&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">currentStepLabel</span> <span class="o">=</span> <span class="n">QLabel</span><span class="p">(</span><span class="s">&quot;Current step&quot;</span><span class="p">)</span>
+        
+        <span class="n">l</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">overallLabel</span><span class="p">)</span>
+        <span class="n">l</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">overallProgress</span><span class="p">)</span>
+        <span class="n">l</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">currentStepLabel</span><span class="p">)</span>
+        <span class="n">l</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">currentStepProgress</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__onNewStep</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">description</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">currentStep</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">currentStepProgress</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">overallProgress</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">currentStep</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">currentStepLabel</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="n">description</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__onCurrentStepProgressChanged</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">progress</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">currentStepProgress</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span> <span class="nb">round</span><span class="p">(</span><span class="mf">100.0</span><span class="o">*</span><span class="n">progress</span><span class="p">)</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+
+<div class="viewcode-block" id="MeshExtractorDialog.run"><a class="viewcode-back" href="../../../volumina.view3d.html#volumina.view3d.GenerateModelsFromLabels_thread.MeshExtractorDialog.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">segVolume</span><span class="p">,</span> <span class="n">suppressLabels</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(),</span> <span class="n">smooth</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">extractor</span> <span class="o">=</span> <span class="n">MeshExtractor</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">extractor</span><span class="o">.</span><span class="n">SetInput</span><span class="p">(</span><span class="n">segVolume</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">extractor</span><span class="o">.</span><span class="n">SuppressLabels</span><span class="p">(</span><span class="n">suppressLabels</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">extractor</span><span class="o">.</span><span class="n">Smooth</span><span class="p">(</span><span class="n">smooth</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">extractor</span><span class="o">.</span><span class="n">progress</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__onCurrentStepProgressChanged</span><span class="p">,</span> <span class="n">Qt</span><span class="o">.</span><span class="n">BlockingQueuedConnection</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">extractor</span><span class="o">.</span><span class="n">newStep</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__onNewStep</span><span class="p">,</span> <span class="n">Qt</span><span class="o">.</span><span class="n">BlockingQueuedConnection</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">extractor</span><span class="o">.</span><span class="n">done</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">onMeshesExtracted</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">extractor</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+    </div>
+<div class="viewcode-block" id="MeshExtractorDialog.onMeshesExtracted"><a class="viewcode-back" href="../../../volumina.view3d.html#volumina.view3d.GenerateModelsFromLabels_thread.MeshExtractorDialog.onMeshesExtracted">[docs]</a>    <span class="k">def</span> <span class="nf">onMeshesExtracted</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">finished</span><span class="o">.</span><span class="n">emit</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<span class="c">#*******************************************************************************</span>
+<span class="c"># i f   _ _ n a m e _ _   = =   &quot; _ _ m a i n _ _ &quot;                            *</span>
+<span class="c">#*******************************************************************************</span>
+</div></div>
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="c">#make the program quit on Ctrl+C</span>
+    <span class="kn">import</span> <span class="nn">signal</span> 
+    <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">signal</span><span class="o">.</span><span class="n">SIG_DFL</span><span class="p">)</span>
+    
+    <span class="n">app</span> <span class="o">=</span> <span class="n">QApplication</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span>
+    
+    <span class="n">f</span><span class="o">=</span><span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="s">&quot;/home/thorben/phd/src/vtkqt-test/seg.h5&quot;</span><span class="p">)</span>
+    <span class="n">seg</span><span class="o">=</span><span class="n">f</span><span class="p">[</span><span class="s">&#39;volume/data&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">,:,:,:,</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="n">window</span> <span class="o">=</span> <span class="n">MeshExtractorDialog</span><span class="p">()</span>
+    <span class="n">window</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+    <span class="n">QTimer</span><span class="o">.</span><span class="n">singleShot</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">partial</span><span class="p">(</span><span class="n">window</span><span class="o">.</span><span class="n">run</span><span class="p">,</span> <span class="n">seg</span><span class="p">));</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">exec_</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Bernhard X. Kausler, Thorben Kröger, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

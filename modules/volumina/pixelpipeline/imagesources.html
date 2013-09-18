@@ -1,0 +1,637 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>volumina.pixelpipeline.imagesources &mdash; volumina 0.6.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../../static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../static/jquery.js"></script>
+    <script type="text/javascript" src="../../../static/underscore.js"></script>
+    <script type="text/javascript" src="../../../static/doctools.js"></script>
+    <link rel="top" title="volumina 0.6.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for volumina.pixelpipeline.imagesources</h1><div class="highlight"><pre>
+<span class="c">#Python</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">volumina</span>
+    <span class="kn">from</span> <span class="nn">volumina.colorama</span> <span class="kn">import</span> <span class="n">Fore</span><span class="p">,</span> <span class="n">Back</span><span class="p">,</span> <span class="n">Style</span>
+<span class="k">except</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">colorama</span> <span class="kn">import</span> <span class="n">Fore</span><span class="p">,</span> <span class="n">Back</span><span class="p">,</span> <span class="n">Style</span>
+
+
+<span class="kn">from</span> <span class="nn">PyQt4.QtCore</span> <span class="kn">import</span> <span class="n">QObject</span><span class="p">,</span> <span class="n">QRect</span><span class="p">,</span> <span class="n">pyqtSignal</span><span class="p">,</span> <span class="n">QMutex</span>
+<span class="kn">from</span> <span class="nn">PyQt4.QtGui</span> <span class="kn">import</span> <span class="n">QImage</span><span class="p">,</span> <span class="n">QColor</span>
+<span class="kn">from</span> <span class="nn">qimage2ndarray</span> <span class="kn">import</span> <span class="n">gray2qimage</span><span class="p">,</span> <span class="n">array2qimage</span><span class="p">,</span> <span class="n">alpha_view</span><span class="p">,</span> <span class="n">rgb_view</span><span class="p">,</span> <span class="n">byte_view</span>
+<span class="kn">from</span> <span class="nn">asyncabcs</span> <span class="kn">import</span> <span class="n">SourceABC</span><span class="p">,</span> <span class="n">RequestABC</span>
+<span class="kn">from</span> <span class="nn">volumina.slicingtools</span> <span class="kn">import</span> <span class="n">is_bounded</span><span class="p">,</span> <span class="n">slicing2rect</span><span class="p">,</span> <span class="n">rect2slicing</span><span class="p">,</span> <span class="n">slicing2shape</span><span class="p">,</span> <span class="n">is_pure_slicing</span>
+<span class="kn">from</span> <span class="nn">volumina.config</span> <span class="kn">import</span> <span class="n">cfg</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+
+<span class="n">_has_vigra</span> <span class="o">=</span> <span class="bp">True</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">vigra</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">_has_vigra</span> <span class="o">=</span> <span class="bp">False</span>
+
+<span class="c">#*******************************************************************************</span>
+<span class="c"># I m a g e S o u r c e                                                        *</span>
+<span class="c">#*******************************************************************************</span>
+
+<div class="viewcode-block" id="ImageSource"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.ImageSource">[docs]</a><span class="k">class</span> <span class="nc">ImageSource</span><span class="p">(</span> <span class="n">QObject</span> <span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Partial implemented base class for image sources</span>
+
+<span class="sd">    Signals:</span>
+<span class="sd">    isDirty -- a rectangular region has changed; transmits</span>
+<span class="sd">               an empty QRect if the whole image is dirty</span>
+
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">isDirty</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span> <span class="n">QRect</span> <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">guarantees_opaqueness</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">parent</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">direct</span><span class="o">=</span><span class="bp">False</span> <span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39; direct: whether this request will be computed synchronously in the GUI thread (direct=True)</span>
+<span class="sd">                    or whether the request will be put on a worker queue to be computed in a worker thread</span>
+<span class="sd">                    (direct=False).</span>
+<span class="sd">                    Only use direct=True if the layer&#39;s data will be immediately available&#39;&#39;&#39;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ImageSource</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span> <span class="n">parent</span> <span class="o">=</span> <span class="n">parent</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_opaque</span> <span class="o">=</span> <span class="n">guarantees_opaqueness</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">direct</span> <span class="o">=</span> <span class="n">direct</span>
+
+<div class="viewcode-block" id="ImageSource.request"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.ImageSource.request">[docs]</a>    <span class="k">def</span> <span class="nf">request</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">rect</span><span class="p">,</span> <span class="n">along_through</span><span class="o">=</span><span class="bp">None</span> <span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+</div>
+<div class="viewcode-block" id="ImageSource.setDirty"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.ImageSource.setDirty">[docs]</a>    <span class="k">def</span> <span class="nf">setDirty</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">slicing</span> <span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Mark a region of the image as dirty.</span>
+
+<span class="sd">        slicing -- if one ore more slices in the slicing</span>
+<span class="sd">                   are unbounded, the whole image is marked dirty;</span>
+<span class="sd">                   since an image has two dimensions, only the first</span>
+<span class="sd">                   two slices in the slicing are used</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_pure_slicing</span><span class="p">(</span><span class="n">slicing</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&#39;dirty region: slicing is not pure&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_bounded</span><span class="p">(</span> <span class="n">slicing</span> <span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">isDirty</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">QRect</span><span class="p">())</span> <span class="c"># empty rect == everything is dirty</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">isDirty</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">slicing2rect</span><span class="p">(</span> <span class="n">slicing</span> <span class="p">))</span>
+</div>
+<div class="viewcode-block" id="ImageSource.isOpaque"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.ImageSource.isOpaque">[docs]</a>    <span class="k">def</span> <span class="nf">isOpaque</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Image is opaque everywhere (i.e. no pixel has an alpha value != 255).</span>
+
+<span class="sd">        If the ImageSource can give an opaqueness guarantee,</span>
+<span class="sd">        performance can be improved since layers occluded by this</span>
+<span class="sd">        source don&#39;t have to be rendered in some cases.</span>
+
+<span class="sd">        Warning: Can cause rendering bugs: In doubt return False.</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_opaque</span></div></div>
+<span class="k">assert</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">ImageSource</span><span class="p">,</span> <span class="n">SourceABC</span><span class="p">)</span>
+
+<span class="c">#*******************************************************************************</span>
+<span class="c"># G r a y s c a l e I m a g e S o u r c e                                      *</span>
+<span class="c">#*******************************************************************************</span>
+
+<div class="viewcode-block" id="GrayscaleImageSource"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.GrayscaleImageSource">[docs]</a><span class="k">class</span> <span class="nc">GrayscaleImageSource</span><span class="p">(</span> <span class="n">ImageSource</span> <span class="p">):</span>
+    <span class="n">loggingName</span> <span class="o">=</span> <span class="n">__name__</span> <span class="o">+</span> <span class="s">&quot;.GrayscaleImageSource&quot;</span>
+    <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">loggingName</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">arraySource2D</span><span class="p">,</span> <span class="n">layer</span> <span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arraySource2D</span><span class="p">,</span> <span class="n">SourceABC</span><span class="p">),</span> <span class="s">&#39;wrong type: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">arraySource2D</span><span class="p">))</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">GrayscaleImageSource</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span> <span class="n">guarantees_opaqueness</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span> <span class="n">direct</span><span class="o">=</span><span class="n">layer</span><span class="o">.</span><span class="n">direct</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_arraySource2D</span> <span class="o">=</span> <span class="n">arraySource2D</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_layer</span> <span class="o">=</span> <span class="n">layer</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">_arraySource2D</span><span class="o">.</span><span class="n">isDirty</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">setDirty</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_layer</span><span class="o">.</span><span class="n">normalizeChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">setDirty</span><span class="p">((</span><span class="nb">slice</span><span class="p">(</span><span class="bp">None</span><span class="p">,</span><span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="bp">None</span><span class="p">,</span><span class="bp">None</span><span class="p">))))</span>
+
+<div class="viewcode-block" id="GrayscaleImageSource.request"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.GrayscaleImageSource.request">[docs]</a>    <span class="k">def</span> <span class="nf">request</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">qrect</span><span class="p">,</span> <span class="n">along_through</span><span class="o">=</span><span class="bp">None</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">getboolean</span><span class="p">(</span><span class="s">&#39;pixelpipeline&#39;</span><span class="p">,</span> <span class="s">&#39;verbose&#39;</span><span class="p">):</span>
+            <span class="n">volumina</span><span class="o">.</span><span class="n">printLock</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+            <span class="k">print</span> <span class="n">Fore</span><span class="o">.</span><span class="n">RED</span> <span class="o">+</span> <span class="s">&quot;  GrayscaleImageSource &#39;</span><span class="si">%s</span><span class="s">&#39; requests (x=</span><span class="si">%d</span><span class="s">, y=</span><span class="si">%d</span><span class="s">, w=</span><span class="si">%d</span><span class="s">, h=</span><span class="si">%d</span><span class="s">)&quot;</span> \
+            <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">objectName</span><span class="p">(),</span> <span class="n">qrect</span><span class="o">.</span><span class="n">x</span><span class="p">(),</span> <span class="n">qrect</span><span class="o">.</span><span class="n">y</span><span class="p">(),</span> <span class="n">qrect</span><span class="o">.</span><span class="n">width</span><span class="p">(),</span> <span class="n">qrect</span><span class="o">.</span><span class="n">height</span><span class="p">())</span> \
+            <span class="o">+</span> <span class="n">Fore</span><span class="o">.</span><span class="n">RESET</span>
+            <span class="n">volumina</span><span class="o">.</span><span class="n">printLock</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+            
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">qrect</span><span class="p">,</span> <span class="n">QRect</span><span class="p">)</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">rect2slicing</span><span class="p">(</span><span class="n">qrect</span><span class="p">)</span>
+        <span class="n">req</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_arraySource2D</span><span class="o">.</span><span class="n">request</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">along_through</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">GrayscaleImageRequest</span><span class="p">(</span> <span class="n">req</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layer</span><span class="o">.</span><span class="n">normalize</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">direct</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">direct</span> <span class="p">)</span></div></div>
+<span class="k">assert</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">GrayscaleImageSource</span><span class="p">,</span> <span class="n">SourceABC</span><span class="p">)</span>
+
+<div class="viewcode-block" id="GrayscaleImageRequest"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.GrayscaleImageRequest">[docs]</a><span class="k">class</span> <span class="nc">GrayscaleImageRequest</span><span class="p">(</span> <span class="nb">object</span> <span class="p">):</span>
+    <span class="n">loggingName</span> <span class="o">=</span> <span class="n">__name__</span> <span class="o">+</span> <span class="s">&quot;.GrayscaleImageRequest&quot;</span>
+    <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">loggingName</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">arrayrequest</span><span class="p">,</span> <span class="n">normalize</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">direct</span><span class="o">=</span><span class="bp">False</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_mutex</span> <span class="o">=</span> <span class="n">QMutex</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_arrayreq</span> <span class="o">=</span> <span class="n">arrayrequest</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span> <span class="o">=</span> <span class="n">normalize</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">direct</span> <span class="o">=</span> <span class="n">direct</span>
+        
+<div class="viewcode-block" id="GrayscaleImageRequest.wait"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.GrayscaleImageRequest.wait">[docs]</a>    <span class="k">def</span> <span class="nf">wait</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">toImage</span><span class="p">()</span>
+        </div>
+<div class="viewcode-block" id="GrayscaleImageRequest.toImage"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.GrayscaleImageRequest.toImage">[docs]</a>    <span class="k">def</span> <span class="nf">toImage</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+       
+        <span class="n">tWAIT</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_arrayreq</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        <span class="n">tWAIT</span> <span class="o">=</span> <span class="mf">1000.0</span><span class="o">*</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="o">-</span><span class="n">tWAIT</span><span class="p">)</span>
+        
+        <span class="n">tAR</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_arrayreq</span><span class="o">.</span><span class="n">getResult</span><span class="p">()</span>
+        <span class="n">tAR</span> <span class="o">=</span> <span class="mf">1000.0</span><span class="o">*</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="o">-</span><span class="n">tAR</span><span class="p">)</span>
+        
+        <span class="k">assert</span> <span class="n">a</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">,</span> <span class="s">&quot;GrayscaleImageRequest.toImage(): result has shape </span><span class="si">%r</span><span class="s">, which is not 2-D&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">,)</span>
+       
+        <span class="n">normalize</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span> 
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">normalize</span><span class="p">:</span>
+            <span class="n">normalize</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">255</span><span class="p">]</span>
+            
+        <span class="n">aCopy</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        
+        <span class="c">#</span>
+        <span class="c"># new conversion</span>
+        <span class="c">#</span>
+        <span class="n">tImg</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="n">_has_vigra</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">vigra</span><span class="o">.</span><span class="n">colors</span><span class="p">,</span> <span class="s">&#39;gray2qimage_ARGB32Premultiplied&#39;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">a</span><span class="o">.</span><span class="n">flags</span><span class="o">.</span><span class="n">contiguous</span><span class="p">:</span>
+                <span class="n">a</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> \
+               <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">or</span> \
+               <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span> <span class="o">==</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]:</span> <span class="c">#FIXME: fix volumina conventions</span>
+                <span class="n">n</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">n</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+            <span class="n">tImg</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="n">QImage</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">QImage</span><span class="o">.</span><span class="n">Format_ARGB32_Premultiplied</span><span class="p">)</span>
+            <span class="n">vigra</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">gray2qimage_ARGB32Premultiplied</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">byte_view</span><span class="p">(</span><span class="n">img</span><span class="p">),</span> <span class="n">n</span><span class="p">)</span>
+            <span class="n">tImg</span> <span class="o">=</span> <span class="mf">1000.0</span><span class="o">*</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="o">-</span><span class="n">tImg</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s">&quot;using slow image creation function&quot;</span><span class="p">)</span>
+            <span class="n">tImg</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span><span class="p">:</span>
+                <span class="c">#clipping has been implemented in this commit,</span>
+                <span class="c">#but it is not yet available in the packages obtained via easy_install</span>
+                <span class="c">#http://www.informatik.uni-hamburg.de/~meine/hg/qimage2ndarray/diff/fcddc70a6dea/qimage2ndarray/__init__.py</span>
+                <span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">aCopy</span><span class="p">,</span> <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span><span class="p">)</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="n">gray2qimage</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span><span class="p">)</span>
+            <span class="n">ret</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">convertToFormat</span><span class="p">(</span><span class="n">QImage</span><span class="o">.</span><span class="n">Format_ARGB32_Premultiplied</span><span class="p">)</span>
+            <span class="n">tImg</span> <span class="o">=</span> <span class="mf">1000.0</span><span class="o">*</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="o">-</span><span class="n">tImg</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">getEffectiveLevel</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">:</span>
+            <span class="n">tTOT</span> <span class="o">=</span> <span class="mf">1000.0</span><span class="o">*</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="o">-</span><span class="n">t</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;toImage (</span><span class="si">%d</span><span class="s">x</span><span class="si">%d</span><span class="s">, normalize=</span><span class="si">%r</span><span class="s">) took </span><span class="si">%f</span><span class="s"> msec. (array req: </span><span class="si">%f</span><span class="s">, wait: </span><span class="si">%f</span><span class="s">, img: </span><span class="si">%f</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">width</span><span class="p">(),</span> <span class="n">img</span><span class="o">.</span><span class="n">height</span><span class="p">(),</span> <span class="n">normalize</span><span class="p">,</span> <span class="n">tTOT</span><span class="p">,</span> <span class="n">tAR</span><span class="p">,</span> <span class="n">tWAIT</span><span class="p">,</span> <span class="n">tImg</span><span class="p">))</span>
+            
+        <span class="k">return</span> <span class="n">img</span>
+            </div>
+<div class="viewcode-block" id="GrayscaleImageRequest.notify"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.GrayscaleImageRequest.notify">[docs]</a>    <span class="k">def</span> <span class="nf">notify</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_arrayreq</span><span class="o">.</span><span class="n">notify</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_onNotify</span><span class="p">,</span> <span class="n">package</span> <span class="o">=</span> <span class="p">(</span><span class="n">callback</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">))</span>
+    </div>
+    <span class="k">def</span> <span class="nf">_onNotify</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">result</span><span class="p">,</span> <span class="n">package</span> <span class="p">):</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">toImage</span><span class="p">()</span>
+        <span class="n">callback</span> <span class="o">=</span> <span class="n">package</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="n">package</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">callback</span><span class="p">(</span> <span class="n">img</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span> <span class="p">)</span></div>
+<span class="k">assert</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">GrayscaleImageRequest</span><span class="p">,</span> <span class="n">RequestABC</span><span class="p">)</span>
+
+<span class="c">#*******************************************************************************</span>
+<span class="c"># A l p h a M o d u l a t e d I m a g e S o u r c e                            *</span>
+<span class="c">#*******************************************************************************</span>
+
+<div class="viewcode-block" id="AlphaModulatedImageSource"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.AlphaModulatedImageSource">[docs]</a><span class="k">class</span> <span class="nc">AlphaModulatedImageSource</span><span class="p">(</span> <span class="n">ImageSource</span> <span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">arraySource2D</span><span class="p">,</span> <span class="n">layer</span> <span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arraySource2D</span><span class="p">,</span> <span class="n">SourceABC</span><span class="p">),</span> <span class="s">&#39;wrong type: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">arraySource2D</span><span class="p">))</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">AlphaModulatedImageSource</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_arraySource2D</span> <span class="o">=</span> <span class="n">arraySource2D</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_layer</span> <span class="o">=</span> <span class="n">layer</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_arraySource2D</span><span class="o">.</span><span class="n">isDirty</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">setDirty</span><span class="p">)</span>
+
+<div class="viewcode-block" id="AlphaModulatedImageSource.request"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.AlphaModulatedImageSource.request">[docs]</a>    <span class="k">def</span> <span class="nf">request</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">qrect</span><span class="p">,</span> <span class="n">along_through</span><span class="o">=</span><span class="bp">None</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">getboolean</span><span class="p">(</span><span class="s">&#39;pixelpipeline&#39;</span><span class="p">,</span> <span class="s">&#39;verbose&#39;</span><span class="p">):</span>
+            <span class="n">volumina</span><span class="o">.</span><span class="n">printLock</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+            <span class="k">print</span> <span class="n">Fore</span><span class="o">.</span><span class="n">RED</span> <span class="o">+</span> <span class="s">&quot;  AlphaModulatedImageSource &#39;</span><span class="si">%s</span><span class="s">&#39; requests (x=</span><span class="si">%d</span><span class="s">, y=</span><span class="si">%d</span><span class="s">, w=</span><span class="si">%d</span><span class="s">, h=</span><span class="si">%d</span><span class="s">)&quot;</span> \
+            <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">objectName</span><span class="p">(),</span> <span class="n">qrect</span><span class="o">.</span><span class="n">x</span><span class="p">(),</span> <span class="n">qrect</span><span class="o">.</span><span class="n">y</span><span class="p">(),</span> <span class="n">qrect</span><span class="o">.</span><span class="n">width</span><span class="p">(),</span> <span class="n">qrect</span><span class="o">.</span><span class="n">height</span><span class="p">())</span> \
+            <span class="o">+</span> <span class="n">Fore</span><span class="o">.</span><span class="n">RESET</span>
+            <span class="n">volumina</span><span class="o">.</span><span class="n">printLock</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+            
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">qrect</span><span class="p">,</span> <span class="n">QRect</span><span class="p">)</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">rect2slicing</span><span class="p">(</span><span class="n">qrect</span><span class="p">)</span>
+        <span class="n">req</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_arraySource2D</span><span class="o">.</span><span class="n">request</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">along_through</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">AlphaModulatedImageRequest</span><span class="p">(</span> <span class="n">req</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layer</span><span class="o">.</span><span class="n">tintColor</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layer</span><span class="o">.</span><span class="n">normalize</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="p">)</span></div></div>
+<span class="k">assert</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">AlphaModulatedImageSource</span><span class="p">,</span> <span class="n">SourceABC</span><span class="p">)</span>
+
+<div class="viewcode-block" id="AlphaModulatedImageRequest"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.AlphaModulatedImageRequest">[docs]</a><span class="k">class</span> <span class="nc">AlphaModulatedImageRequest</span><span class="p">(</span> <span class="nb">object</span> <span class="p">):</span>
+    <span class="n">loggingName</span> <span class="o">=</span> <span class="n">__name__</span> <span class="o">+</span> <span class="s">&quot;.AlphaModulatedImageRequest&quot;</span>
+    <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">loggingName</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">arrayrequest</span><span class="p">,</span> <span class="n">tintColor</span><span class="p">,</span> <span class="n">normalize</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">255</span><span class="p">)):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_mutex</span> <span class="o">=</span> <span class="n">QMutex</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_arrayreq</span> <span class="o">=</span> <span class="n">arrayrequest</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span> <span class="o">=</span> <span class="n">normalize</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tintColor</span> <span class="o">=</span> <span class="n">tintColor</span>
+
+<div class="viewcode-block" id="AlphaModulatedImageRequest.wait"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.AlphaModulatedImageRequest.wait">[docs]</a>    <span class="k">def</span> <span class="nf">wait</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">toImage</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="AlphaModulatedImageRequest.toImage"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.AlphaModulatedImageRequest.toImage">[docs]</a>    <span class="k">def</span> <span class="nf">toImage</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+       
+        <span class="n">tWAIT</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_arrayreq</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        <span class="n">tWAIT</span> <span class="o">=</span> <span class="mf">1000.0</span><span class="o">*</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="o">-</span><span class="n">tWAIT</span><span class="p">)</span>
+        
+        <span class="n">tAR</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_arrayreq</span><span class="o">.</span><span class="n">getResult</span><span class="p">()</span>
+        <span class="n">tAR</span> <span class="o">=</span> <span class="mf">1000.0</span><span class="o">*</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="o">-</span><span class="n">tAR</span><span class="p">)</span>
+
+        <span class="n">tImg</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="n">_has_vigra</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">vigra</span><span class="o">.</span><span class="n">colors</span><span class="p">,</span> <span class="s">&#39;gray2qimage_ARGB32Premultiplied&#39;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">a</span><span class="o">.</span><span class="n">flags</span><span class="o">.</span><span class="n">contiguous</span><span class="p">:</span>
+                <span class="n">a</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="n">tImg</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="n">QImage</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">QImage</span><span class="o">.</span><span class="n">Format_ARGB32_Premultiplied</span><span class="p">)</span>
+            <span class="n">tintColor</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">_tintColor</span><span class="o">.</span><span class="n">redF</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tintColor</span><span class="o">.</span><span class="n">greenF</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tintColor</span><span class="o">.</span><span class="n">blueF</span><span class="p">()],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">);</span>
+            <span class="n">normalize</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">normalize</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">normalize</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+                <span class="n">normalize</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="n">vigra</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">alphamodulated2qimage_ARGB32Premultiplied</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">byte_view</span><span class="p">(</span><span class="n">img</span><span class="p">),</span> <span class="n">tintColor</span><span class="p">,</span> <span class="n">normalize</span><span class="p">)</span> 
+            <span class="n">tImg</span> <span class="o">=</span> <span class="mf">1000.0</span><span class="o">*</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="o">-</span><span class="n">tImg</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s">&quot;using unoptimized conversion functions&quot;</span><span class="p">)</span>
+            <span class="n">tImg</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="n">shape</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">shape</span> <span class="o">+</span> <span class="p">(</span><span class="mi">4</span><span class="p">,)</span>
+            <span class="n">d</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+            <span class="n">d</span><span class="p">[:,:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span><span class="p">[:,:]</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_tintColor</span><span class="o">.</span><span class="n">redF</span><span class="p">()</span>
+            <span class="n">d</span><span class="p">[:,:,</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span><span class="p">[:,:]</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_tintColor</span><span class="o">.</span><span class="n">greenF</span><span class="p">()</span>
+            <span class="n">d</span><span class="p">[:,:,</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span><span class="p">[:,:]</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_tintColor</span><span class="o">.</span><span class="n">blueF</span><span class="p">()</span>
+            <span class="n">d</span><span class="p">[:,:,</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span><span class="p">[:,:]</span>
+            <span class="n">normalize</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="n">array2qimage</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">normalize</span><span class="p">)</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">convertToFormat</span><span class="p">(</span><span class="n">QImage</span><span class="o">.</span><span class="n">Format_ARGB32_Premultiplied</span><span class="p">)</span>        
+            <span class="n">tImg</span> <span class="o">=</span> <span class="mf">1000.0</span><span class="o">*</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="o">-</span><span class="n">tImg</span><span class="p">)</span>
+       
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">getEffectiveLevel</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">:</span>
+            <span class="n">tTOT</span> <span class="o">=</span> <span class="mf">1000.0</span><span class="o">*</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="o">-</span><span class="n">t</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;toImage (</span><span class="si">%d</span><span class="s">x</span><span class="si">%d</span><span class="s">, normalize=</span><span class="si">%r</span><span class="s">) took </span><span class="si">%f</span><span class="s"> msec. (array req: </span><span class="si">%f</span><span class="s">, wait: </span><span class="si">%f</span><span class="s">, img: </span><span class="si">%f</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">width</span><span class="p">(),</span> <span class="n">img</span><span class="o">.</span><span class="n">height</span><span class="p">(),</span> <span class="n">normalize</span><span class="p">,</span> <span class="n">tTOT</span><span class="p">,</span> <span class="n">tAR</span><span class="p">,</span> <span class="n">tWAIT</span><span class="p">,</span> <span class="n">tImg</span><span class="p">))</span>
+            
+        <span class="k">return</span> <span class="n">img</span>
+        
+        <span class="k">return</span> <span class="n">img</span>
+            </div>
+<div class="viewcode-block" id="AlphaModulatedImageRequest.notify"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.AlphaModulatedImageRequest.notify">[docs]</a>    <span class="k">def</span> <span class="nf">notify</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_arrayreq</span><span class="o">.</span><span class="n">notify</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_onNotify</span><span class="p">,</span> <span class="n">package</span> <span class="o">=</span> <span class="p">(</span><span class="n">callback</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">))</span>
+    </div>
+    <span class="k">def</span> <span class="nf">_onNotify</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">result</span><span class="p">,</span> <span class="n">package</span> <span class="p">):</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">toImage</span><span class="p">()</span>
+        <span class="n">callback</span> <span class="o">=</span> <span class="n">package</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="n">package</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">callback</span><span class="p">(</span> <span class="n">img</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span> <span class="p">)</span></div>
+<span class="k">assert</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">AlphaModulatedImageRequest</span><span class="p">,</span> <span class="n">RequestABC</span><span class="p">)</span>
+
+<span class="c">#*******************************************************************************</span>
+<span class="c"># C o l o r t a b l e I m a g e S o u r c e                                    *</span>
+<span class="c">#*******************************************************************************</span>
+
+<div class="viewcode-block" id="ColortableImageSource"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.ColortableImageSource">[docs]</a><span class="k">class</span> <span class="nc">ColortableImageSource</span><span class="p">(</span> <span class="n">ImageSource</span> <span class="p">):</span>
+    <span class="n">loggingName</span> <span class="o">=</span> <span class="n">__name__</span> <span class="o">+</span> <span class="s">&quot;.ColortableImageSource&quot;</span>
+    <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">loggingName</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">arraySource2D</span><span class="p">,</span> <span class="n">layer</span> <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; colorTable: a list of QRgba values &quot;&quot;&quot;</span>
+
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arraySource2D</span><span class="p">,</span> <span class="n">SourceABC</span><span class="p">),</span> <span class="s">&#39;wrong type: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">arraySource2D</span><span class="p">))</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ColortableImageSource</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">direct</span><span class="o">=</span><span class="n">layer</span><span class="o">.</span><span class="n">direct</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_arraySource2D</span> <span class="o">=</span> <span class="n">arraySource2D</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_arraySource2D</span><span class="o">.</span><span class="n">isDirty</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">setDirty</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_layer</span> <span class="o">=</span> <span class="n">layer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">updateColorTable</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_layer</span><span class="o">.</span><span class="n">colorTableChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">updateColorTable</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_layer</span><span class="o">.</span><span class="n">normalizeChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">setDirty</span><span class="p">((</span><span class="nb">slice</span><span class="p">(</span><span class="bp">None</span><span class="p">,</span><span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="bp">None</span><span class="p">,</span><span class="bp">None</span><span class="p">))))</span>
+
+<div class="viewcode-block" id="ColortableImageSource.updateColorTable"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.ColortableImageSource.updateColorTable">[docs]</a>    <span class="k">def</span> <span class="nf">updateColorTable</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">layerColorTable</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layer</span><span class="o">.</span><span class="n">colorTable</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_colorTable</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">layerColorTable</span><span class="p">),</span> <span class="mi">4</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">layerColorTable</span><span class="p">):</span>
+            <span class="c">#note that we use qimage2ndarray.byte_view() on a QImage with Format_ARGB32 below.</span>
+            <span class="c">#this means that the memory layout actually is B, G, R, A</span>
+
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">QColor</span><span class="p">):</span>
+                <span class="n">color</span> <span class="o">=</span> <span class="n">c</span>
+            <span class="k">else</span><span class="p">:</span> 
+                <span class="n">color</span> <span class="o">=</span> <span class="n">QColor</span><span class="o">.</span><span class="n">fromRgba</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_colorTable</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">color</span><span class="o">.</span><span class="n">blue</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_colorTable</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">color</span><span class="o">.</span><span class="n">green</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_colorTable</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">color</span><span class="o">.</span><span class="n">red</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_colorTable</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">color</span><span class="o">.</span><span class="n">alpha</span><span class="p">()</span> 
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">isDirty</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">QRect</span><span class="p">())</span> <span class="c"># empty rect == everything is dirty</span>
+        </div>
+<div class="viewcode-block" id="ColortableImageSource.request"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.ColortableImageSource.request">[docs]</a>    <span class="k">def</span> <span class="nf">request</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">qrect</span><span class="p">,</span> <span class="n">along_through</span><span class="o">=</span><span class="bp">None</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">getboolean</span><span class="p">(</span><span class="s">&#39;pixelpipeline&#39;</span><span class="p">,</span> <span class="s">&#39;verbose&#39;</span><span class="p">):</span>
+            <span class="n">volumina</span><span class="o">.</span><span class="n">printLock</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+            <span class="k">print</span> <span class="n">Fore</span><span class="o">.</span><span class="n">RED</span> <span class="o">+</span> <span class="s">&quot;  ColortableImageSource &#39;</span><span class="si">%s</span><span class="s">&#39; requests (x=</span><span class="si">%d</span><span class="s">, y=</span><span class="si">%d</span><span class="s">, w=</span><span class="si">%d</span><span class="s">, h=</span><span class="si">%d</span><span class="s">) = </span><span class="si">%r</span><span class="s">&quot;</span> \
+            <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">objectName</span><span class="p">(),</span> <span class="n">qrect</span><span class="o">.</span><span class="n">x</span><span class="p">(),</span> <span class="n">qrect</span><span class="o">.</span><span class="n">y</span><span class="p">(),</span> <span class="n">qrect</span><span class="o">.</span><span class="n">width</span><span class="p">(),</span> <span class="n">qrect</span><span class="o">.</span><span class="n">height</span><span class="p">(),</span> <span class="n">rect2slicing</span><span class="p">(</span><span class="n">qrect</span><span class="p">))</span> \
+            <span class="o">+</span> <span class="n">Fore</span><span class="o">.</span><span class="n">RESET</span>
+            <span class="n">volumina</span><span class="o">.</span><span class="n">printLock</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+            
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">qrect</span><span class="p">,</span> <span class="n">QRect</span><span class="p">)</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">rect2slicing</span><span class="p">(</span><span class="n">qrect</span><span class="p">)</span>
+        <span class="n">req</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_arraySource2D</span><span class="o">.</span><span class="n">request</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">along_through</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ColortableImageRequest</span><span class="p">(</span> <span class="n">req</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_colorTable</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layer</span><span class="o">.</span><span class="n">normalize</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">direct</span> <span class="p">)</span></div></div>
+<span class="k">assert</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">ColortableImageSource</span><span class="p">,</span> <span class="n">SourceABC</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ColortableImageRequest"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.ColortableImageRequest">[docs]</a><span class="k">class</span> <span class="nc">ColortableImageRequest</span><span class="p">(</span> <span class="nb">object</span> <span class="p">):</span>
+    <span class="n">loggingName</span> <span class="o">=</span> <span class="n">__name__</span> <span class="o">+</span> <span class="s">&quot;.ColortableImageRequest&quot;</span>
+    <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">loggingName</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">arrayrequest</span><span class="p">,</span> <span class="n">colorTable</span><span class="p">,</span> <span class="n">normalize</span><span class="p">,</span> <span class="n">direct</span><span class="o">=</span><span class="bp">False</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_mutex</span> <span class="o">=</span> <span class="n">QMutex</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_arrayreq</span> <span class="o">=</span> <span class="n">arrayrequest</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_colorTable</span> <span class="o">=</span> <span class="n">colorTable</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">direct</span> <span class="o">=</span> <span class="n">direct</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span> <span class="o">=</span> <span class="n">normalize</span>
+
+<div class="viewcode-block" id="ColortableImageRequest.wait"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.ColortableImageRequest.wait">[docs]</a>    <span class="k">def</span> <span class="nf">wait</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">toImage</span><span class="p">()</span>
+        </div>
+<div class="viewcode-block" id="ColortableImageRequest.toImage"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.ColortableImageRequest.toImage">[docs]</a>    <span class="k">def</span> <span class="nf">toImage</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        
+        <span class="n">tWAIT</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_arrayreq</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        <span class="n">tWAIT</span> <span class="o">=</span> <span class="mf">1000.0</span><span class="o">*</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="o">-</span><span class="n">tWAIT</span><span class="p">)</span>
+        
+        <span class="n">tAR</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_arrayreq</span><span class="o">.</span><span class="n">getResult</span><span class="p">()</span>
+        <span class="n">tAR</span> <span class="o">=</span> <span class="mf">1000.0</span><span class="o">*</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="o">-</span><span class="n">tAR</span><span class="p">)</span>
+        
+        <span class="k">assert</span> <span class="n">a</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="n">nmin</span><span class="p">,</span> <span class="n">nmax</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span>
+            <span class="k">if</span> <span class="n">nmin</span><span class="p">:</span>
+                <span class="n">a</span> <span class="o">=</span> <span class="n">a</span> <span class="o">-</span> <span class="n">nmin</span>
+            <span class="n">scale</span> <span class="o">=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_colorTable</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">nmax</span> <span class="o">-</span> <span class="n">nmin</span> <span class="o">+</span> <span class="mf">1e-35</span><span class="p">)</span> <span class="c">#if max==min</span>
+            <span class="k">if</span> <span class="n">scale</span> <span class="o">!=</span> <span class="mf">1.0</span><span class="p">:</span>
+                <span class="n">a</span> <span class="o">=</span> <span class="n">a</span> <span class="o">*</span> <span class="n">scale</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_colorTable</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">2</span><span class="o">**</span><span class="mi">8</span><span class="p">:</span>
+                <span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span> <span class="n">a</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span> <span class="p">)</span>
+            <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_colorTable</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">2</span><span class="o">**</span><span class="mi">16</span><span class="p">:</span>
+                <span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span> <span class="n">a</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint16</span> <span class="p">)</span>
+            <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_colorTable</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">2</span><span class="o">**</span><span class="mi">32</span><span class="p">:</span>
+                <span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span> <span class="n">a</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint32</span> <span class="p">)</span>
+
+        <span class="c"># Use vigra if possible (much faster)</span>
+        <span class="n">tImg</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="n">_has_vigra</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">vigra</span><span class="o">.</span><span class="n">colors</span><span class="p">,</span> <span class="s">&#39;applyColortable&#39;</span><span class="p">):</span>
+            <span class="n">tImg</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="n">QImage</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">QImage</span><span class="o">.</span><span class="n">Format_ARGB32</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">issubclass</span><span class="p">(</span> <span class="n">a</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">type</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span> <span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+                <span class="c">#FIXME: maybe this should be done in a better way using an operator before the colortable request which properly handles </span>
+                <span class="c">#this problem </span>
+                <span class="kn">import</span> <span class="nn">warnings</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&quot;Data for colortable layers cannot be float, casting&quot;</span><span class="p">,</span><span class="ne">RuntimeWarning</span><span class="p">)</span>
+                <span class="n">a</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+            <span class="n">vigra</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">applyColortable</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_colorTable</span><span class="p">,</span> <span class="n">byte_view</span><span class="p">(</span><span class="n">img</span><span class="p">))</span>
+            <span class="n">tImg</span> <span class="o">=</span> <span class="mf">1000.0</span><span class="o">*</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="o">-</span><span class="n">tImg</span><span class="p">)</span>
+
+        <span class="c"># Without vigra, do it the slow way </span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">_has_vigra</span><span class="p">:</span>
+                <span class="c"># If this warning is annoying you, try this:</span>
+                <span class="c"># warnings.filterwarnings(&quot;once&quot;)</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&quot;Using slow colortable images.  Upgrade to VIGRA &gt; 1.9 to use faster implementation.&quot;</span><span class="p">)</span>
+
+            <span class="c">#make sure that a has values in range [0, colortable_length)</span>
+            <span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">remainder</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_colorTable</span><span class="p">))</span>
+            <span class="c">#apply colortable</span>
+            <span class="n">colortable</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">roll</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">fliplr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_colorTable</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="c"># self._colorTable is BGRA, but array2qimage wants RGBA</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="n">colortable</span><span class="p">[</span><span class="n">a</span><span class="p">]</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="n">array2qimage</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+            
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">getEffectiveLevel</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">:</span>
+            <span class="n">tTOT</span> <span class="o">=</span> <span class="mf">1000.0</span><span class="o">*</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="o">-</span><span class="n">t</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;toImage (</span><span class="si">%d</span><span class="s">x</span><span class="si">%d</span><span class="s">) took </span><span class="si">%f</span><span class="s"> msec. (array req: </span><span class="si">%f</span><span class="s">, wait: </span><span class="si">%f</span><span class="s">, img: </span><span class="si">%f</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">width</span><span class="p">(),</span> <span class="n">img</span><span class="o">.</span><span class="n">height</span><span class="p">(),</span> <span class="n">tTOT</span><span class="p">,</span> <span class="n">tAR</span><span class="p">,</span> <span class="n">tWAIT</span><span class="p">,</span> <span class="n">tImg</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">img</span> 
+            </div>
+<div class="viewcode-block" id="ColortableImageRequest.notify"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.ColortableImageRequest.notify">[docs]</a>    <span class="k">def</span> <span class="nf">notify</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_arrayreq</span><span class="o">.</span><span class="n">notify</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_onNotify</span><span class="p">,</span> <span class="n">package</span> <span class="o">=</span> <span class="p">(</span><span class="n">callback</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">))</span>
+    </div>
+    <span class="k">def</span> <span class="nf">_onNotify</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">result</span><span class="p">,</span> <span class="n">package</span> <span class="p">):</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">toImage</span><span class="p">()</span>
+        <span class="n">callback</span> <span class="o">=</span> <span class="n">package</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="n">package</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">callback</span><span class="p">(</span> <span class="n">img</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span> <span class="p">)</span></div>
+<span class="k">assert</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">ColortableImageRequest</span><span class="p">,</span> <span class="n">RequestABC</span><span class="p">)</span>
+
+<span class="c">#*******************************************************************************</span>
+<span class="c"># R G B A I m a g e S o u r c e                                                *</span>
+<span class="c">#*******************************************************************************</span>
+
+<div class="viewcode-block" id="RGBAImageSource"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.RGBAImageSource">[docs]</a><span class="k">class</span> <span class="nc">RGBAImageSource</span><span class="p">(</span> <span class="n">ImageSource</span> <span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">red</span><span class="p">,</span> <span class="n">green</span><span class="p">,</span> <span class="n">blue</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">layer</span><span class="p">,</span> <span class="n">guarantees_opaqueness</span> <span class="o">=</span> <span class="bp">False</span> <span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        If you don&#39;t want to set all the channels,</span>
+<span class="sd">        a ConstantSource may be used as a replacement for</span>
+<span class="sd">        the missing channels.</span>
+
+<span class="sd">        red, green, blue, alpha - 2d array sources</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_layer</span> <span class="o">=</span> <span class="n">layer</span>
+        <span class="n">channels</span> <span class="o">=</span> <span class="p">[</span><span class="n">red</span><span class="p">,</span> <span class="n">green</span><span class="p">,</span> <span class="n">blue</span><span class="p">,</span> <span class="n">alpha</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">channel</span> <span class="ow">in</span> <span class="n">channels</span><span class="p">:</span> 
+                <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">channel</span><span class="p">,</span> <span class="n">SourceABC</span><span class="p">)</span> <span class="p">,</span> <span class="s">&#39;channel has wrong type: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">channel</span><span class="p">))</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">RGBAImageSource</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span> <span class="n">guarantees_opaqueness</span> <span class="o">=</span> <span class="n">guarantees_opaqueness</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_channels</span> <span class="o">=</span> <span class="n">channels</span>
+        <span class="k">for</span> <span class="n">arraySource</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_channels</span><span class="p">:</span>
+            <span class="n">arraySource</span><span class="o">.</span><span class="n">isDirty</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">setDirty</span><span class="p">)</span>
+
+<div class="viewcode-block" id="RGBAImageSource.request"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.RGBAImageSource.request">[docs]</a>    <span class="k">def</span> <span class="nf">request</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">qrect</span><span class="p">,</span> <span class="n">along_through</span><span class="o">=</span><span class="bp">None</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">getboolean</span><span class="p">(</span><span class="s">&#39;pixelpipeline&#39;</span><span class="p">,</span> <span class="s">&#39;verbose&#39;</span><span class="p">):</span>
+            <span class="n">volumina</span><span class="o">.</span><span class="n">printLock</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+            <span class="k">print</span> <span class="n">Fore</span><span class="o">.</span><span class="n">RED</span> <span class="o">+</span> <span class="s">&quot;  RGBAImageSource &#39;</span><span class="si">%s</span><span class="s">&#39; requests (x=</span><span class="si">%d</span><span class="s">, y=</span><span class="si">%d</span><span class="s">, w=</span><span class="si">%d</span><span class="s">, h=</span><span class="si">%d</span><span class="s">)&quot;</span> \
+            <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">objectName</span><span class="p">(),</span> <span class="n">qrect</span><span class="o">.</span><span class="n">x</span><span class="p">(),</span> <span class="n">qrect</span><span class="o">.</span><span class="n">y</span><span class="p">(),</span> <span class="n">qrect</span><span class="o">.</span><span class="n">width</span><span class="p">(),</span> <span class="n">qrect</span><span class="o">.</span><span class="n">height</span><span class="p">())</span> \
+             <span class="o">+</span> <span class="n">Fore</span><span class="o">.</span><span class="n">RESET</span>
+            <span class="n">volumina</span><span class="o">.</span><span class="n">printLock</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+            
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">qrect</span><span class="p">,</span> <span class="n">QRect</span><span class="p">)</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">rect2slicing</span><span class="p">(</span> <span class="n">qrect</span> <span class="p">)</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_channels</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">request</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">along_through</span><span class="p">)</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_channels</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">request</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">along_through</span><span class="p">)</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_channels</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">request</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">along_through</span><span class="p">)</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_channels</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">request</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">along_through</span><span class="p">)</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span> <span class="n">slicing2shape</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span>
+        <span class="k">assert</span> <span class="nb">all</span><span class="p">([</span><span class="n">x</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">shape</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">RGBAImageRequest</span><span class="p">(</span> <span class="n">r</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_layer</span><span class="o">.</span><span class="n">_normalize</span> <span class="p">)</span></div></div>
+<span class="k">assert</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">RGBAImageSource</span><span class="p">,</span> <span class="n">SourceABC</span><span class="p">)</span>
+
+<div class="viewcode-block" id="RGBAImageRequest"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.RGBAImageRequest">[docs]</a><span class="k">class</span> <span class="nc">RGBAImageRequest</span><span class="p">(</span> <span class="nb">object</span> <span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span>
+                  <span class="n">normalizeR</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">normalizeG</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">normalizeB</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">normalizeA</span><span class="o">=</span><span class="bp">None</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_mutex</span> <span class="o">=</span> <span class="n">QMutex</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_requests</span> <span class="o">=</span> <span class="n">r</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">a</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span> <span class="o">=</span> <span class="p">[</span><span class="n">normalizeR</span><span class="p">,</span> <span class="n">normalizeG</span><span class="p">,</span> <span class="n">normalizeB</span><span class="p">,</span> <span class="n">normalizeA</span><span class="p">]</span>
+        <span class="n">shape</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_requestsFinished</span> <span class="o">=</span> <span class="mi">4</span> <span class="o">*</span> <span class="p">[</span><span class="bp">False</span><span class="p">,]</span>
+
+<div class="viewcode-block" id="RGBAImageRequest.wait"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.RGBAImageRequest.wait">[docs]</a>    <span class="k">def</span> <span class="nf">wait</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">req</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_requests</span><span class="p">:</span>
+            <span class="n">req</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">toImage</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="RGBAImageRequest.toImage"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.RGBAImageRequest.toImage">[docs]</a>    <span class="k">def</span> <span class="nf">toImage</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">req</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_requests</span><span class="p">):</span>
+            <span class="n">a</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">getResult</span><span class="p">()</span>
+            <span class="n">normalize</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">normalize</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> \
+               <span class="n">normalize</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">normalize</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+                <span class="n">a</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+                <span class="n">a</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="n">normalize</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">*</span><span class="mf">255.0</span> <span class="o">/</span> <span class="p">(</span><span class="n">normalize</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">normalize</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">a</span><span class="p">[</span><span class="n">a</span> <span class="o">&gt;</span> <span class="mi">255</span><span class="p">]</span> <span class="o">=</span> <span class="mi">255</span>
+                <span class="n">a</span><span class="p">[</span><span class="n">a</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span>   <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">a</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">[:,:,</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">array2qimage</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">img</span><span class="o">.</span><span class="n">convertToFormat</span><span class="p">(</span><span class="n">QImage</span><span class="o">.</span><span class="n">Format_ARGB32_Premultiplied</span><span class="p">)</span>        
+</div>
+<div class="viewcode-block" id="RGBAImageRequest.notify"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.RGBAImageRequest.notify">[docs]</a>    <span class="k">def</span> <span class="nf">notify</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span> <span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_requests</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">notify</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_onNotify</span><span class="p">,</span> <span class="n">package</span> <span class="o">=</span> <span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">))</span>
+</div>
+    <span class="k">def</span> <span class="nf">_onNotify</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">result</span><span class="p">,</span> <span class="n">package</span> <span class="p">):</span>
+        <span class="n">channel</span> <span class="o">=</span> <span class="n">package</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_requestsFinished</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_requestsFinished</span><span class="p">):</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">toImage</span><span class="p">()</span>
+        
+            <span class="n">callback</span> <span class="o">=</span> <span class="n">package</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">kwargs</span> <span class="o">=</span> <span class="n">package</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+            <span class="n">callback</span><span class="p">(</span> <span class="n">img</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span> <span class="p">)</span>
+</div>
+<span class="k">assert</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">RGBAImageRequest</span><span class="p">,</span> <span class="n">RequestABC</span><span class="p">)</span>
+
+
+
+<div class="viewcode-block" id="RandomImageSource"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.RandomImageSource">[docs]</a><span class="k">class</span> <span class="nc">RandomImageSource</span><span class="p">(</span> <span class="n">ImageSource</span> <span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Random noise image for testing and debugging.&#39;&#39;&#39;</span>
+<div class="viewcode-block" id="RandomImageSource.request"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.RandomImageSource.request">[docs]</a>    <span class="k">def</span> <span class="nf">request</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">qrect</span><span class="p">,</span> <span class="n">along_through</span><span class="o">=</span><span class="bp">None</span> <span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">qrect</span><span class="p">,</span> <span class="n">QRect</span><span class="p">)</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">rect2slicing</span><span class="p">(</span><span class="n">qrect</span><span class="p">)</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="n">slicing2shape</span><span class="p">(</span> <span class="n">s</span> <span class="p">)</span>
+        <span class="k">return</span> <span class="n">RandomImageRequest</span><span class="p">(</span> <span class="n">shape</span> <span class="p">)</span></div></div>
+<span class="k">assert</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">RandomImageSource</span><span class="p">,</span> <span class="n">SourceABC</span><span class="p">)</span>
+
+<div class="viewcode-block" id="RandomImageRequest"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.RandomImageRequest">[docs]</a><span class="k">class</span> <span class="nc">RandomImageRequest</span><span class="p">(</span> <span class="nb">object</span> <span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">shape</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="n">shape</span>
+
+<div class="viewcode-block" id="RandomImageRequest.wait"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.RandomImageRequest.wait">[docs]</a>    <span class="k">def</span> <span class="nf">wait</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">*</span> <span class="mi">255</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>        
+        <span class="k">assert</span> <span class="n">d</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">gray2qimage</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">img</span><span class="o">.</span><span class="n">convertToFormat</span><span class="p">(</span><span class="n">QImage</span><span class="o">.</span><span class="n">Format_ARGB32_Premultiplied</span><span class="p">)</span>
+            </div>
+<div class="viewcode-block" id="RandomImageRequest.notify"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.imagesources.RandomImageRequest.notify">[docs]</a>    <span class="k">def</span> <span class="nf">notify</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span> <span class="p">):</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        <span class="n">callback</span><span class="p">(</span> <span class="n">img</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span> <span class="p">)</span>
+</div></div>
+<span class="k">assert</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">RandomImageRequest</span><span class="p">,</span> <span class="n">RequestABC</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Bernhard X. Kausler, Thorben Kröger, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

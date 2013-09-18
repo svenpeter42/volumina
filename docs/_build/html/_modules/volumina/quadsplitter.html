@@ -1,0 +1,412 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>volumina.quadsplitter &mdash; volumina 0.6.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../static/jquery.js"></script>
+    <script type="text/javascript" src="../../static/underscore.js"></script>
+    <script type="text/javascript" src="../../static/doctools.js"></script>
+    <link rel="top" title="volumina 0.6.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for volumina.quadsplitter</h1><div class="highlight"><pre>
+<span class="c">#!/usr/bin/env python</span>
+<span class="kn">from</span> <span class="nn">PyQt4.QtCore</span> <span class="kn">import</span> <span class="n">Qt</span><span class="p">,</span> <span class="n">pyqtSignal</span><span class="p">,</span> <span class="n">QEvent</span><span class="p">,</span> <span class="n">QTimer</span>
+<span class="kn">from</span> <span class="nn">PyQt4.QtGui</span> <span class="kn">import</span> <span class="n">QSizePolicy</span><span class="p">,</span> <span class="n">QWidget</span><span class="p">,</span> <span class="n">QVBoxLayout</span><span class="p">,</span> <span class="n">QSplitter</span><span class="p">,</span> <span class="n">QApplication</span>
+
+<div class="viewcode-block" id="ImageView2DFloatingWindow"><a class="viewcode-back" href="../../volumina.html#volumina.quadsplitter.ImageView2DFloatingWindow">[docs]</a><span class="k">class</span> <span class="nc">ImageView2DFloatingWindow</span><span class="p">(</span><span class="n">QWidget</span><span class="p">):</span>
+    <span class="n">onCloseClick</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">QWidget</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+    
+<div class="viewcode-block" id="ImageView2DFloatingWindow.closeEvent"><a class="viewcode-back" href="../../volumina.html#volumina.quadsplitter.ImageView2DFloatingWindow.closeEvent">[docs]</a>    <span class="k">def</span> <span class="nf">closeEvent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">onCloseClick</span><span class="o">.</span><span class="n">emit</span><span class="p">()</span>
+        <span class="n">event</span><span class="o">.</span><span class="n">ignore</span><span class="p">()</span>
+</div></div>
+<div class="viewcode-block" id="ImageView2DDockWidget"><a class="viewcode-back" href="../../volumina.html#volumina.quadsplitter.ImageView2DDockWidget">[docs]</a><span class="k">class</span> <span class="nc">ImageView2DDockWidget</span><span class="p">(</span><span class="n">QWidget</span><span class="p">):</span>
+    <span class="n">onDockButtonClicked</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">()</span>
+    <span class="n">onMaxButtonClicked</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">()</span>
+    <span class="n">onMinButtonClicked</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">graphicsView</span><span class="p">):</span>
+        <span class="n">QWidget</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">graphicsView</span> <span class="o">=</span> <span class="n">graphicsView</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_isDocked</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_isMaximized</span> <span class="o">=</span> <span class="bp">False</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">setContentsMargins</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">setContentsMargins</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setLayout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">windowForGraphicsView</span> <span class="o">=</span> <span class="n">ImageView2DFloatingWindow</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">windowForGraphicsView</span><span class="o">.</span><span class="n">layout</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">windowForGraphicsView</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">setContentsMargins</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">windowForGraphicsView</span><span class="o">.</span><span class="n">setLayout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">windowForGraphicsView</span><span class="o">.</span><span class="n">layout</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">windowForGraphicsView</span><span class="o">.</span><span class="n">onCloseClick</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">onDockButton</span><span class="p">)</span>
+    
+        <span class="bp">self</span><span class="o">.</span><span class="n">addGraphicsView</span><span class="p">()</span>
+    
+<div class="viewcode-block" id="ImageView2DDockWidget.connectHud"><a class="viewcode-back" href="../../volumina.html#volumina.quadsplitter.ImageView2DDockWidget.connectHud">[docs]</a>    <span class="k">def</span> <span class="nf">connectHud</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">graphicsView</span><span class="p">,</span> <span class="s">&#39;_hud&#39;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">graphicsView</span><span class="o">.</span><span class="n">_hud</span><span class="o">.</span><span class="n">dockButtonClicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">onDockButton</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">graphicsView</span><span class="o">.</span><span class="n">_hud</span><span class="o">.</span><span class="n">maximizeButtonClicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">onMaxButton</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="ImageView2DDockWidget.onMaxButton"><a class="viewcode-back" href="../../volumina.html#volumina.quadsplitter.ImageView2DDockWidget.onMaxButton">[docs]</a>    <span class="k">def</span> <span class="nf">onMaxButton</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_isMaximized</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">onMinButtonClicked</span><span class="o">.</span><span class="n">emit</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">minimizeView</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">onMaxButtonClicked</span><span class="o">.</span><span class="n">emit</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">maximizeView</span><span class="p">()</span>
+        </div>
+<div class="viewcode-block" id="ImageView2DDockWidget.onDockButton"><a class="viewcode-back" href="../../volumina.html#volumina.quadsplitter.ImageView2DDockWidget.onDockButton">[docs]</a>    <span class="k">def</span> <span class="nf">onDockButton</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">onDockButtonClicked</span><span class="o">.</span><span class="n">emit</span><span class="p">()</span>
+        </div>
+<div class="viewcode-block" id="ImageView2DDockWidget.addGraphicsView"><a class="viewcode-back" href="../../volumina.html#volumina.quadsplitter.ImageView2DDockWidget.addGraphicsView">[docs]</a>    <span class="k">def</span> <span class="nf">addGraphicsView</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">graphicsView</span><span class="p">)</span>
+        </div>
+<div class="viewcode-block" id="ImageView2DDockWidget.removeGraphicsView"><a class="viewcode-back" href="../../volumina.html#volumina.quadsplitter.ImageView2DDockWidget.removeGraphicsView">[docs]</a>    <span class="k">def</span> <span class="nf">removeGraphicsView</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">removeWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">graphicsView</span><span class="p">)</span>
+        </div>
+<div class="viewcode-block" id="ImageView2DDockWidget.undockView"><a class="viewcode-back" href="../../volumina.html#volumina.quadsplitter.ImageView2DDockWidget.undockView">[docs]</a>    <span class="k">def</span> <span class="nf">undockView</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_isDocked</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">graphicsView</span><span class="p">,</span> <span class="s">&#39;_hud&#39;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">graphicsView</span><span class="o">.</span><span class="n">_hud</span><span class="o">.</span><span class="n">dockButton</span><span class="o">.</span><span class="n">setIcon</span><span class="p">(</span><span class="s">&#39;dock&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">graphicsView</span><span class="o">.</span><span class="n">_hud</span><span class="o">.</span><span class="n">maxButton</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">(</span><span class="bp">False</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">removeGraphicsView</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">windowForGraphicsView</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">graphicsView</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">windowForGraphicsView</span><span class="o">.</span><span class="n">showMaximized</span><span class="p">()</span> <span class="c">#supersize me</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">windowForGraphicsView</span><span class="o">.</span><span class="n">setWindowTitle</span><span class="p">(</span><span class="s">&quot;ilastik&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">windowForGraphicsView</span><span class="o">.</span><span class="n">raise_</span><span class="p">()</span>
+    </div>
+<div class="viewcode-block" id="ImageView2DDockWidget.dockView"><a class="viewcode-back" href="../../volumina.html#volumina.quadsplitter.ImageView2DDockWidget.dockView">[docs]</a>    <span class="k">def</span> <span class="nf">dockView</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_isDocked</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">graphicsView</span><span class="p">,</span> <span class="s">&#39;_hud&#39;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">graphicsView</span><span class="o">.</span><span class="n">_hud</span><span class="o">.</span><span class="n">dockButton</span><span class="o">.</span><span class="n">setIcon</span><span class="p">(</span><span class="s">&#39;undock&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">graphicsView</span><span class="o">.</span><span class="n">_hud</span><span class="o">.</span><span class="n">maxButton</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">windowForGraphicsView</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">removeWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">graphicsView</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">windowForGraphicsView</span><span class="o">.</span><span class="n">hide</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addGraphicsView</span><span class="p">()</span>
+        </div>
+<div class="viewcode-block" id="ImageView2DDockWidget.maximizeView"><a class="viewcode-back" href="../../volumina.html#volumina.quadsplitter.ImageView2DDockWidget.maximizeView">[docs]</a>    <span class="k">def</span> <span class="nf">maximizeView</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_isMaximized</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">graphicsView</span><span class="p">,</span> <span class="s">&#39;_hud&#39;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">graphicsView</span><span class="o">.</span><span class="n">_hud</span><span class="o">.</span><span class="n">maxButton</span><span class="o">.</span><span class="n">setIcon</span><span class="p">(</span><span class="s">&#39;minimize&#39;</span><span class="p">)</span>
+        </div>
+<div class="viewcode-block" id="ImageView2DDockWidget.minimizeView"><a class="viewcode-back" href="../../volumina.html#volumina.quadsplitter.ImageView2DDockWidget.minimizeView">[docs]</a>    <span class="k">def</span> <span class="nf">minimizeView</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_isMaximized</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">graphicsView</span><span class="p">,</span> <span class="s">&#39;_hud&#39;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">graphicsView</span><span class="o">.</span><span class="n">_hud</span><span class="o">.</span><span class="n">maxButton</span><span class="o">.</span><span class="n">setIcon</span><span class="p">(</span><span class="s">&#39;maximize&#39;</span><span class="p">)</span>
+</div></div>
+<div class="viewcode-block" id="QuadView"><a class="viewcode-back" href="../../volumina.html#volumina.quadsplitter.QuadView">[docs]</a><span class="k">class</span> <span class="nc">QuadView</span><span class="p">(</span><span class="n">QWidget</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="n">view1</span><span class="p">,</span> <span class="n">view2</span><span class="p">,</span> <span class="n">view3</span><span class="p">,</span> <span class="n">view4</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="n">QWidget</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">setSizePolicy</span><span class="p">(</span><span class="n">QSizePolicy</span><span class="o">.</span><span class="n">Expanding</span><span class="p">,</span> <span class="n">QSizePolicy</span><span class="o">.</span><span class="n">Expanding</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">installEventFilter</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">dockableContainer</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span> <span class="o">=</span> <span class="n">QVBoxLayout</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setLayout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">setContentsMargins</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">setSpacing</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">splitVertical</span> <span class="o">=</span> <span class="n">QSplitter</span><span class="p">(</span><span class="n">Qt</span><span class="o">.</span><span class="n">Vertical</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">splitVertical</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">splitHorizontal1</span> <span class="o">=</span> <span class="n">QSplitter</span><span class="p">(</span><span class="n">Qt</span><span class="o">.</span><span class="n">Horizontal</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">splitVertical</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">splitHorizontal1</span><span class="o">.</span><span class="n">setObjectName</span><span class="p">(</span><span class="s">&quot;splitter1&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">splitHorizontal2</span> <span class="o">=</span> <span class="n">QSplitter</span><span class="p">(</span><span class="n">Qt</span><span class="o">.</span><span class="n">Horizontal</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">splitVertical</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">splitHorizontal2</span><span class="o">.</span><span class="n">setObjectName</span><span class="p">(</span><span class="s">&quot;splitter2&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">splitHorizontal1</span><span class="o">.</span><span class="n">splitterMoved</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">horizontalSplitterMoved</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">splitHorizontal2</span><span class="o">.</span><span class="n">splitterMoved</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">horizontalSplitterMoved</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">imageView2D_1</span> <span class="o">=</span> <span class="n">view1</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">imageView2D_2</span> <span class="o">=</span> <span class="n">view2</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">imageView2D_3</span> <span class="o">=</span> <span class="n">view3</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">testView4</span> <span class="o">=</span> <span class="n">ImageView2DDockWidget</span><span class="p">(</span><span class="n">view4</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">dock1_ofSplitHorizontal1</span> <span class="o">=</span> <span class="n">ImageView2DDockWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">imageView2D_1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dock1_ofSplitHorizontal1</span><span class="o">.</span><span class="n">connectHud</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dockableContainer</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dock1_ofSplitHorizontal1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dock1_ofSplitHorizontal1</span><span class="o">.</span><span class="n">onDockButtonClicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span> <span class="n">arg</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dock1_ofSplitHorizontal1</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_dock</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dock1_ofSplitHorizontal1</span><span class="o">.</span><span class="n">onMaxButtonClicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span> <span class="n">arg</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dock1_ofSplitHorizontal1</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_max</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dock1_ofSplitHorizontal1</span><span class="o">.</span><span class="n">onMinButtonClicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span> <span class="n">arg</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dock1_ofSplitHorizontal1</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_min</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">splitHorizontal1</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dock1_ofSplitHorizontal1</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">dock2_ofSplitHorizontal1</span> <span class="o">=</span> <span class="n">ImageView2DDockWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">imageView2D_2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dock2_ofSplitHorizontal1</span><span class="o">.</span><span class="n">onDockButtonClicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span> <span class="n">arg</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dock2_ofSplitHorizontal1</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_dock</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dock2_ofSplitHorizontal1</span><span class="o">.</span><span class="n">onMaxButtonClicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span> <span class="n">arg</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dock2_ofSplitHorizontal1</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_max</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dock2_ofSplitHorizontal1</span><span class="o">.</span><span class="n">onMinButtonClicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span> <span class="n">arg</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dock2_ofSplitHorizontal1</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_min</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dock2_ofSplitHorizontal1</span><span class="o">.</span><span class="n">connectHud</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dockableContainer</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dock2_ofSplitHorizontal1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">splitHorizontal1</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dock2_ofSplitHorizontal1</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">dock1_ofSplitHorizontal2</span> <span class="o">=</span> <span class="n">ImageView2DDockWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">imageView2D_3</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dock1_ofSplitHorizontal2</span><span class="o">.</span><span class="n">onDockButtonClicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span> <span class="n">arg</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dock1_ofSplitHorizontal2</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_dock</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dock1_ofSplitHorizontal2</span><span class="o">.</span><span class="n">onMaxButtonClicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span> <span class="n">arg</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dock1_ofSplitHorizontal2</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_max</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dock1_ofSplitHorizontal2</span><span class="o">.</span><span class="n">onMinButtonClicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span> <span class="n">arg</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dock1_ofSplitHorizontal2</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_min</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dock1_ofSplitHorizontal2</span><span class="o">.</span><span class="n">connectHud</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dockableContainer</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dock1_ofSplitHorizontal2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">splitHorizontal2</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dock1_ofSplitHorizontal2</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">dock2_ofSplitHorizontal2</span> <span class="o">=</span> <span class="n">ImageView2DDockWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">testView4</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dockableContainer</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dock2_ofSplitHorizontal2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">splitHorizontal2</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dock2_ofSplitHorizontal2</span><span class="p">)</span>  
+        
+        <span class="c">#this is a hack: with 0 ms it does not work...</span>
+        <span class="n">QTimer</span><span class="o">.</span><span class="n">singleShot</span><span class="p">(</span><span class="mi">250</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resizeEqual</span><span class="p">)</span>
+        
+    <span class="k">def</span> <span class="nf">_resizeEqual</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span> <span class="p">[</span><span class="n">dock</span><span class="o">.</span><span class="n">isVisible</span><span class="p">()</span> <span class="k">for</span> <span class="n">dock</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dockableContainer</span><span class="p">]</span> <span class="p">):</span>
+            <span class="k">return</span>
+        <span class="n">w</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">()</span><span class="o">.</span><span class="n">width</span><span class="p">()</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">splitHorizontal1</span><span class="o">.</span><span class="n">handleWidth</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">()</span><span class="o">.</span><span class="n">height</span><span class="p">()</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">splitVertical</span><span class="o">.</span><span class="n">handleWidth</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">splitVertical</span><span class="o">.</span><span class="n">setSizes</span><span class="p">([</span><span class="n">h</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">h</span><span class="o">/</span><span class="mi">2</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">splitHorizontal1</span><span class="o">.</span><span class="n">count</span><span class="p">()</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">splitHorizontal2</span><span class="o">.</span><span class="n">count</span><span class="p">()</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="c">#docks = [self.imageView2D_1, self.imageView2D_2, self.imageView2D_3, self.testView4]</span>
+            <span class="n">docks</span> <span class="o">=</span> <span class="p">[]</span>        
+            <span class="k">for</span> <span class="n">splitter</span> <span class="ow">in</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">splitHorizontal1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">splitHorizontal2</span><span class="p">]:</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span> <span class="n">splitter</span><span class="o">.</span><span class="n">count</span><span class="p">()</span> <span class="p">):</span>
+                    <span class="n">docks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">splitter</span><span class="o">.</span><span class="n">widget</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="o">.</span><span class="n">graphicsView</span> <span class="p">)</span>
+            
+            <span class="n">w1</span>  <span class="o">=</span> <span class="p">[</span><span class="n">docks</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">minimumSize</span><span class="p">()</span><span class="o">.</span><span class="n">width</span><span class="p">()</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">]</span> <span class="p">]</span>
+            <span class="n">w2</span>  <span class="o">=</span> <span class="p">[</span><span class="n">docks</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">minimumSize</span><span class="p">()</span><span class="o">.</span><span class="n">width</span><span class="p">()</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span> <span class="p">]</span>
+            <span class="n">wLeft</span>  <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">w1</span><span class="p">)</span>
+            <span class="n">wRight</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">w2</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">wLeft</span> <span class="o">&gt;</span> <span class="n">wRight</span> <span class="ow">and</span> <span class="n">wLeft</span> <span class="o">&gt;</span> <span class="n">w</span><span class="o">/</span><span class="mi">2</span><span class="p">:</span>
+                <span class="n">wRight</span> <span class="o">=</span> <span class="n">w</span> <span class="o">-</span> <span class="n">wLeft</span>
+            <span class="k">elif</span> <span class="n">wRight</span> <span class="o">&gt;=</span> <span class="n">wLeft</span> <span class="ow">and</span> <span class="n">wRight</span> <span class="o">&gt;</span> <span class="n">w</span><span class="o">/</span><span class="mi">2</span><span class="p">:</span>
+                <span class="n">wLeft</span> <span class="o">=</span> <span class="n">w</span> <span class="o">-</span> <span class="n">wRight</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">wLeft</span> <span class="o">=</span> <span class="n">w</span><span class="o">/</span><span class="mi">2</span>
+                <span class="n">wRight</span> <span class="o">=</span> <span class="n">w</span><span class="o">/</span><span class="mi">2</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">splitHorizontal1</span><span class="o">.</span><span class="n">setSizes</span><span class="p">([</span><span class="n">wLeft</span><span class="p">,</span> <span class="n">wRight</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">splitHorizontal2</span><span class="o">.</span><span class="n">setSizes</span><span class="p">([</span><span class="n">wLeft</span><span class="p">,</span> <span class="n">wRight</span><span class="p">])</span>
+        
+<div class="viewcode-block" id="QuadView.eventFilter"><a class="viewcode-back" href="../../volumina.html#volumina.quadsplitter.QuadView.eventFilter">[docs]</a>    <span class="k">def</span> <span class="nf">eventFilter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">type</span><span class="p">()</span> <span class="ow">in</span> <span class="p">[</span><span class="n">QEvent</span><span class="o">.</span><span class="n">WindowActivate</span><span class="p">,</span> <span class="n">QEvent</span><span class="o">.</span><span class="n">Show</span><span class="p">]):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_synchronizeSplitter</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">False</span>
+</div>
+    <span class="k">def</span> <span class="nf">_synchronizeSplitter</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">sizes1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">splitHorizontal1</span><span class="o">.</span><span class="n">sizes</span><span class="p">()</span>
+        <span class="n">sizes2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">splitHorizontal2</span><span class="o">.</span><span class="n">sizes</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sizes1</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">sizes1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">splitHorizontal2</span><span class="o">.</span><span class="n">setSizes</span><span class="p">(</span><span class="n">sizes1</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">sizes2</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">sizes2</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">splitHorizontal1</span><span class="o">.</span><span class="n">setSizes</span><span class="p">(</span><span class="n">sizes2</span><span class="p">)</span>
+    
+<div class="viewcode-block" id="QuadView.resizeEvent"><a class="viewcode-back" href="../../volumina.html#volumina.quadsplitter.QuadView.resizeEvent">[docs]</a>    <span class="k">def</span> <span class="nf">resizeEvent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+        <span class="n">QWidget</span><span class="o">.</span><span class="n">resizeEvent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_synchronizeSplitter</span><span class="p">()</span>
+    </div>
+<div class="viewcode-block" id="QuadView.horizontalSplitterMoved"><a class="viewcode-back" href="../../volumina.html#volumina.quadsplitter.QuadView.horizontalSplitterMoved">[docs]</a>    <span class="k">def</span> <span class="nf">horizontalSplitterMoved</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">splitHorizontal1</span><span class="o">.</span><span class="n">count</span><span class="p">()</span> <span class="o">!=</span> <span class="mi">2</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">splitHorizontal2</span><span class="o">.</span><span class="n">count</span><span class="p">()</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">return</span> 
+        <span class="n">sizes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">splitHorizontal1</span><span class="o">.</span><span class="n">sizes</span><span class="p">()</span>
+        <span class="c">#What. Nr2</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">splitHorizontal2</span><span class="o">.</span><span class="n">closestLegalPosition</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">splitHorizontal2</span><span class="o">.</span><span class="n">closestLegalPosition</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+            <span class="n">sizeLeft</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">splitHorizontal1</span><span class="o">.</span><span class="n">closestLegalPosition</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sizeLeft</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">splitHorizontal2</span><span class="o">.</span><span class="n">closestLegalPosition</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+            
+        <span class="n">sizeRight</span> <span class="o">=</span> <span class="n">sizes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">sizes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">sizeLeft</span>
+        <span class="n">sizes</span> <span class="o">=</span> <span class="p">[</span><span class="n">sizeLeft</span><span class="p">,</span> <span class="n">sizeRight</span><span class="p">]</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">splitHorizontal1</span><span class="o">.</span><span class="n">setSizes</span><span class="p">(</span><span class="n">sizes</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">splitHorizontal2</span><span class="o">.</span><span class="n">setSizes</span><span class="p">(</span><span class="n">sizes</span><span class="p">)</span> 
+</div>
+<div class="viewcode-block" id="QuadView.addStatusBar"><a class="viewcode-back" href="../../volumina.html#volumina.quadsplitter.QuadView.addStatusBar">[docs]</a>    <span class="k">def</span> <span class="nf">addStatusBar</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bar</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">statusBar</span> <span class="o">=</span> <span class="n">bar</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">addLayout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">statusBar</span><span class="p">)</span>
+        </div>
+<div class="viewcode-block" id="QuadView.setGrayScaleToQuadStatusBar"><a class="viewcode-back" href="../../volumina.html#volumina.quadsplitter.QuadView.setGrayScaleToQuadStatusBar">[docs]</a>    <span class="k">def</span> <span class="nf">setGrayScaleToQuadStatusBar</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gray</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">quadViewStatusBar</span><span class="o">.</span><span class="n">setGrayScale</span><span class="p">(</span><span class="n">gray</span><span class="p">)</span>
+        </div>
+<div class="viewcode-block" id="QuadView.setMouseCoordsToQuadStatusBar"><a class="viewcode-back" href="../../volumina.html#volumina.quadsplitter.QuadView.setMouseCoordsToQuadStatusBar">[docs]</a>    <span class="k">def</span> <span class="nf">setMouseCoordsToQuadStatusBar</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">quadViewStatusBar</span><span class="o">.</span><span class="n">setMouseCoords</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span> 
+</div>
+<div class="viewcode-block" id="QuadView.ensureMaximized"><a class="viewcode-back" href="../../volumina.html#volumina.quadsplitter.QuadView.ensureMaximized">[docs]</a>    <span class="k">def</span> <span class="nf">ensureMaximized</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">axis</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Maximize the view for the given axis if it isn&#39;t already maximized.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">axisDict</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">0</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dock2_ofSplitHorizontal1</span><span class="p">,</span>  <span class="c"># x</span>
+                     <span class="mi">1</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dock1_ofSplitHorizontal2</span><span class="p">,</span>  <span class="c"># y</span>
+                     <span class="mi">2</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dock1_ofSplitHorizontal1</span> <span class="p">}</span> <span class="c"># z</span>
+        
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">axisDict</span><span class="p">[</span><span class="n">axis</span><span class="p">]</span><span class="o">.</span><span class="n">_isMaximized</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">switchMinMax</span><span class="p">(</span><span class="n">axis</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="QuadView.switchMinMax"><a class="viewcode-back" href="../../volumina.html#volumina.quadsplitter.QuadView.switchMinMax">[docs]</a>    <span class="k">def</span> <span class="nf">switchMinMax</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">axis</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Switch an AxisViewWidget between from minimized to maximized and vice</span>
+<span class="sd">        versa.</span>
+
+<span class="sd">        Keyword arguments:</span>
+<span class="sd">        axis -- the axis which is represented by the widget (no default)</span>
+<span class="sd">                either string or integer </span>
+<span class="sd">                &#39;x&#39; - 2</span>
+<span class="sd">                &#39;y&#39; - 1</span>
+<span class="sd">                &#39;z&#39; - 0</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="c">#TODO: get the mapping information from where it is set! if this is not</span>
+        <span class="c">#done properly - do it properly</span>
+
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">axis</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span><span class="p">:</span>
+            <span class="n">axisDict</span> <span class="o">=</span> <span class="p">{</span> <span class="s">&#39;x&#39;</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dock2_ofSplitHorizontal1</span><span class="p">,</span>  <span class="c"># x</span>
+                         <span class="s">&#39;y&#39;</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dock1_ofSplitHorizontal2</span><span class="p">,</span>  <span class="c"># y</span>
+                         <span class="s">&#39;z&#39;</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dock1_ofSplitHorizontal1</span> <span class="p">}</span> <span class="c"># z</span>
+        <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">axis</span><span class="p">)</span> <span class="o">==</span> <span class="nb">int</span><span class="p">:</span>
+            <span class="n">axisDict</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">0</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dock2_ofSplitHorizontal1</span><span class="p">,</span>  <span class="c"># x</span>
+                         <span class="mi">1</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dock1_ofSplitHorizontal2</span><span class="p">,</span>  <span class="c"># y</span>
+                         <span class="mi">2</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dock1_ofSplitHorizontal1</span> <span class="p">}</span> <span class="c"># z</span>
+
+        <span class="n">dockWidget</span> <span class="o">=</span> <span class="n">axisDict</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">axis</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">dWidget</span> <span class="ow">in</span> <span class="n">axisDict</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">dWidget</span><span class="o">.</span><span class="n">_isMaximized</span><span class="p">:</span>
+                <span class="n">dWidget</span><span class="o">.</span><span class="n">graphicsView</span><span class="o">.</span><span class="n">_hud</span><span class="o">.</span><span class="n">maximizeButtonClicked</span><span class="o">.</span><span class="n">emit</span><span class="p">()</span>
+        <span class="n">dockWidget</span><span class="o">.</span><span class="n">graphicsView</span><span class="o">.</span><span class="n">_hud</span><span class="o">.</span><span class="n">maximizeButtonClicked</span><span class="o">.</span><span class="n">emit</span><span class="p">()</span>
+    </div>
+<div class="viewcode-block" id="QuadView.switchXMinMax"><a class="viewcode-back" href="../../volumina.html#volumina.quadsplitter.QuadView.switchXMinMax">[docs]</a>    <span class="k">def</span> <span class="nf">switchXMinMax</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">switchMinMax</span><span class="p">(</span><span class="s">&#39;x&#39;</span><span class="p">)</span>
+    </div>
+<div class="viewcode-block" id="QuadView.switchYMinMax"><a class="viewcode-back" href="../../volumina.html#volumina.quadsplitter.QuadView.switchYMinMax">[docs]</a>    <span class="k">def</span> <span class="nf">switchYMinMax</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">switchMinMax</span><span class="p">(</span><span class="s">&#39;y&#39;</span><span class="p">)</span>
+        </div>
+<div class="viewcode-block" id="QuadView.switchZMinMax"><a class="viewcode-back" href="../../volumina.html#volumina.quadsplitter.QuadView.switchZMinMax">[docs]</a>    <span class="k">def</span> <span class="nf">switchZMinMax</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">switchMinMax</span><span class="p">(</span><span class="s">&#39;z&#39;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="QuadView.on_dock"><a class="viewcode-back" href="../../volumina.html#volumina.quadsplitter.QuadView.on_dock">[docs]</a>    <span class="k">def</span> <span class="nf">on_dock</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dockWidget</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">dockWidget</span><span class="o">.</span><span class="n">_isDocked</span><span class="p">:</span>
+            <span class="n">dockWidget</span><span class="o">.</span><span class="n">undockView</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">on_min</span><span class="p">(</span><span class="n">dockWidget</span><span class="p">)</span>
+            <span class="n">dockWidget</span><span class="o">.</span><span class="n">minimizeView</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">dockWidget</span><span class="o">.</span><span class="n">dockView</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="QuadView.on_max"><a class="viewcode-back" href="../../volumina.html#volumina.quadsplitter.QuadView.on_max">[docs]</a>    <span class="k">def</span> <span class="nf">on_max</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dockWidget</span><span class="p">):</span>
+        <span class="n">dockWidget</span><span class="o">.</span><span class="n">setVisible</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">dock</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dockableContainer</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">dockWidget</span> <span class="o">==</span> <span class="n">dock</span><span class="p">:</span>
+                <span class="n">dock</span><span class="o">.</span><span class="n">setVisible</span><span class="p">(</span><span class="bp">False</span><span class="p">)</span>
+
+        <span class="c"># Force sizes to be updated now</span>
+        <span class="n">QApplication</span><span class="o">.</span><span class="n">processEvents</span><span class="p">()</span>
+        
+        <span class="c"># On linux, the vertical splitter doesn&#39;t seem to refresh unless we do so manually</span>
+        <span class="c"># Presumably, this is a QT bug.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">splitVertical</span><span class="o">.</span><span class="n">refresh</span><span class="p">()</span>
+
+        <span class="c"># Viewport doesn&#39;t update automatically...</span>
+        <span class="n">view</span> <span class="o">=</span> <span class="n">dockWidget</span><span class="o">.</span><span class="n">graphicsView</span>        
+        <span class="n">view</span><span class="o">.</span><span class="n">viewport</span><span class="p">()</span><span class="o">.</span><span class="n">setGeometry</span><span class="p">(</span> <span class="n">view</span><span class="o">.</span><span class="n">rect</span><span class="p">()</span> <span class="p">)</span>
+</div>
+<div class="viewcode-block" id="QuadView.on_min"><a class="viewcode-back" href="../../volumina.html#volumina.quadsplitter.QuadView.on_min">[docs]</a>    <span class="k">def</span> <span class="nf">on_min</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dockWidget</span><span class="p">):</span>
+
+        <span class="k">for</span> <span class="n">dock</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dockableContainer</span><span class="p">:</span>
+            <span class="n">dock</span><span class="o">.</span><span class="n">setVisible</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+
+        <span class="c"># Force sizes to be updated now</span>
+        <span class="n">QApplication</span><span class="o">.</span><span class="n">processEvents</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_resizeEqual</span><span class="p">()</span>
+
+        <span class="c"># Viewports don&#39;t update automatically...</span>
+        <span class="k">for</span> <span class="n">dock</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dockableContainer</span><span class="p">:</span>
+            <span class="n">view</span> <span class="o">=</span> <span class="n">dock</span><span class="o">.</span><span class="n">graphicsView</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">view</span><span class="p">,</span> <span class="s">&#39;viewport&#39;</span><span class="p">):</span>
+                <span class="n">view</span><span class="o">.</span><span class="n">viewport</span><span class="p">()</span><span class="o">.</span><span class="n">setGeometry</span><span class="p">(</span> <span class="n">view</span><span class="o">.</span><span class="n">rect</span><span class="p">()</span> <span class="p">)</span>
+   </div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Bernhard X. Kausler, Thorben Kröger, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

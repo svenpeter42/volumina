@@ -1,0 +1,1279 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>pixelpipeline Package &mdash; volumina 0.6.0 documentation</title>
+    
+    <link rel="stylesheet" href="static/default.css" type="text/css" />
+    <link rel="stylesheet" href="static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="static/jquery.js"></script>
+    <script type="text/javascript" src="static/underscore.js"></script>
+    <script type="text/javascript" src="static/doctools.js"></script>
+    <link rel="top" title="volumina 0.6.0 documentation" href="index.html" />
+    <link rel="up" title="volumina Package" href="volumina.html" />
+    <link rel="next" title="skeletons Package" href="volumina.skeletons.html" />
+    <link rel="prev" title="colorama Package" href="volumina.colorama.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="volumina.skeletons.html" title="skeletons Package"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="volumina.colorama.html" title="colorama Package"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="modules.html" >volumina</a> &raquo;</li>
+          <li><a href="volumina.html" accesskey="U">volumina Package</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="pixelpipeline-package">
+<h1>pixelpipeline Package<a class="headerlink" href="#pixelpipeline-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-volumina.pixelpipeline._testing">
+<span id="testing-module"></span><h2><tt class="xref py py-mod docutils literal"><span class="pre">_testing</span></tt> Module<a class="headerlink" href="#module-volumina.pixelpipeline._testing" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="volumina.pixelpipeline._testing.OpDelay">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline._testing.</tt><tt class="descname">OpDelay</tt><big>(</big><em>g</em>, <em>delay_factor=1e-06</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/_testing.html#OpDelay"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline._testing.OpDelay" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">lazyflow.operators.opArrayPiper.OpArrayPiper</span></tt></p>
+<dl class="method">
+<dt id="volumina.pixelpipeline._testing.OpDelay.execute">
+<tt class="descname">execute</tt><big>(</big><em>slot</em>, <em>subindex</em>, <em>roi</em>, <em>result</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/_testing.html#OpDelay.execute"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline._testing.OpDelay.execute" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline._testing.OpDelay.inputSlots">
+<tt class="descname">inputSlots</tt><em class="property"> = [InputSlot()]</em><a class="headerlink" href="#volumina.pixelpipeline._testing.OpDelay.inputSlots" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline._testing.OpDelay.outputSlots">
+<tt class="descname">outputSlots</tt><em class="property"> = [OutputSlot()]</em><a class="headerlink" href="#volumina.pixelpipeline._testing.OpDelay.outputSlots" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="volumina.pixelpipeline._testing.OpDataProvider">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline._testing.</tt><tt class="descname">OpDataProvider</tt><big>(</big><em>voluminaData</em>, <em>graph=None</em>, <em>parent=None</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/_testing.html#OpDataProvider"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline._testing.OpDataProvider" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">lazyflow.operator.Operator</span></tt></p>
+<dl class="attribute">
+<dt id="volumina.pixelpipeline._testing.OpDataProvider.name">
+<tt class="descname">name</tt><em class="property"> = 'Data Provider'</em><a class="headerlink" href="#volumina.pixelpipeline._testing.OpDataProvider.name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline._testing.OpDataProvider.category">
+<tt class="descname">category</tt><em class="property"> = 'Input'</em><a class="headerlink" href="#volumina.pixelpipeline._testing.OpDataProvider.category" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline._testing.OpDataProvider.inputSlots">
+<tt class="descname">inputSlots</tt><em class="property"> = [InputSlot(optional=True)]</em><a class="headerlink" href="#volumina.pixelpipeline._testing.OpDataProvider.inputSlots" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline._testing.OpDataProvider.outputSlots">
+<tt class="descname">outputSlots</tt><em class="property"> = [OutputSlot()]</em><a class="headerlink" href="#volumina.pixelpipeline._testing.OpDataProvider.outputSlots" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline._testing.OpDataProvider.execute">
+<tt class="descname">execute</tt><big>(</big><em>slot</em>, <em>subindex</em>, <em>roi</em>, <em>result</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/_testing.html#OpDataProvider.execute"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline._testing.OpDataProvider.execute" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline._testing.OpDataProvider.setInSlot">
+<tt class="descname">setInSlot</tt><big>(</big><em>slot</em>, <em>subindex</em>, <em>roi</em>, <em>value</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/_testing.html#OpDataProvider.setInSlot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline._testing.OpDataProvider.setInSlot" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-volumina.pixelpipeline.asyncabcs">
+<span id="asyncabcs-module"></span><h2><tt class="xref py py-mod docutils literal"><span class="pre">asyncabcs</span></tt> Module<a class="headerlink" href="#module-volumina.pixelpipeline.asyncabcs" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="volumina.pixelpipeline.asyncabcs.RequestABC">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline.asyncabcs.</tt><tt class="descname">RequestABC</tt><a class="reference internal" href="modules/volumina/pixelpipeline/asyncabcs.html#RequestABC"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.asyncabcs.RequestABC" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<dl class="method">
+<dt id="volumina.pixelpipeline.asyncabcs.RequestABC.wait">
+<tt class="descname">wait</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/asyncabcs.html#RequestABC.wait"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.asyncabcs.RequestABC.wait" title="Permalink to this definition">¶</a></dt>
+<dd><p>doc</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.asyncabcs.RequestABC.notify">
+<tt class="descname">notify</tt><big>(</big><em>callback</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/asyncabcs.html#RequestABC.notify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.asyncabcs.RequestABC.notify" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="volumina.pixelpipeline.asyncabcs.SourceABC">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline.asyncabcs.</tt><tt class="descname">SourceABC</tt><a class="reference internal" href="modules/volumina/pixelpipeline/asyncabcs.html#SourceABC"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.asyncabcs.SourceABC" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.asyncabcs.SourceABC.numberOfChannelsChanged">
+<tt class="descname">numberOfChannelsChanged</tt><a class="headerlink" href="#volumina.pixelpipeline.asyncabcs.SourceABC.numberOfChannelsChanged" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.asyncabcs.SourceABC.numberOfChannels">
+<tt class="descname">numberOfChannels</tt><a class="reference internal" href="modules/volumina/pixelpipeline/asyncabcs.html#SourceABC.numberOfChannels"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.asyncabcs.SourceABC.numberOfChannels" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.asyncabcs.SourceABC.request">
+<tt class="descname">request</tt><big>(</big><em>slicing</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/asyncabcs.html#SourceABC.request"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.asyncabcs.SourceABC.request" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.asyncabcs.SourceABC.setDirty">
+<tt class="descname">setDirty</tt><big>(</big><em>slicing</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/asyncabcs.html#SourceABC.setDirty"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.asyncabcs.SourceABC.setDirty" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.asyncabcs.SourceABC.clean_up">
+<tt class="descname">clean_up</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/asyncabcs.html#SourceABC.clean_up"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.asyncabcs.SourceABC.clean_up" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-volumina.pixelpipeline.datasourcefactories">
+<span id="datasourcefactories-module"></span><h2><tt class="xref py py-mod docutils literal"><span class="pre">datasourcefactories</span></tt> Module<a class="headerlink" href="#module-volumina.pixelpipeline.datasourcefactories" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-volumina.pixelpipeline.datasources">
+<span id="datasources-module"></span><h2><tt class="xref py py-mod docutils literal"><span class="pre">datasources</span></tt> Module<a class="headerlink" href="#module-volumina.pixelpipeline.datasources" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="volumina.pixelpipeline.datasources.ArrayRequest">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline.datasources.</tt><tt class="descname">ArrayRequest</tt><big>(</big><em>array</em>, <em>slicing</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#ArrayRequest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.ArrayRequest" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.ArrayRequest.wait">
+<tt class="descname">wait</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#ArrayRequest.wait"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.ArrayRequest.wait" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.ArrayRequest.getResult">
+<tt class="descname">getResult</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#ArrayRequest.getResult"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.ArrayRequest.getResult" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.ArrayRequest.cancel">
+<tt class="descname">cancel</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#ArrayRequest.cancel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.ArrayRequest.cancel" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.ArrayRequest.submit">
+<tt class="descname">submit</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#ArrayRequest.submit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.ArrayRequest.submit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.ArrayRequest.notify">
+<tt class="descname">notify</tt><big>(</big><em>callback</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#ArrayRequest.notify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.ArrayRequest.notify" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="volumina.pixelpipeline.datasources.ArraySource">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline.datasources.</tt><tt class="descname">ArraySource</tt><big>(</big><em>array</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#ArraySource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.ArraySource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">PyQt4.QtCore.QObject</span></tt></p>
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.datasources.ArraySource.isDirty">
+<tt class="descname">isDirty</tt><a class="headerlink" href="#volumina.pixelpipeline.datasources.ArraySource.isDirty" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.datasources.ArraySource.numberOfChannelsChanged">
+<tt class="descname">numberOfChannelsChanged</tt><a class="headerlink" href="#volumina.pixelpipeline.datasources.ArraySource.numberOfChannelsChanged" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.datasources.ArraySource.numberOfChannels">
+<tt class="descname">numberOfChannels</tt><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#ArraySource.numberOfChannels"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.ArraySource.numberOfChannels" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.ArraySource.clean_up">
+<tt class="descname">clean_up</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#ArraySource.clean_up"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.ArraySource.clean_up" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.ArraySource.dtype">
+<tt class="descname">dtype</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#ArraySource.dtype"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.ArraySource.dtype" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.ArraySource.request">
+<tt class="descname">request</tt><big>(</big><em>slicing</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#ArraySource.request"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.ArraySource.request" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.ArraySource.setDirty">
+<tt class="descname">setDirty</tt><big>(</big><em>slicing</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#ArraySource.setDirty"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.ArraySource.setDirty" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="volumina.pixelpipeline.datasources.ArraySinkSource">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline.datasources.</tt><tt class="descname">ArraySinkSource</tt><big>(</big><em>array</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#ArraySinkSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.ArraySinkSource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#volumina.pixelpipeline.datasources.ArraySource" title="volumina.pixelpipeline.datasources.ArraySource"><tt class="xref py py-class docutils literal"><span class="pre">volumina.pixelpipeline.datasources.ArraySource</span></tt></a></p>
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.ArraySinkSource.put">
+<tt class="descname">put</tt><big>(</big><em>slicing</em>, <em>subarray</em>, <em>neutral=0</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#ArraySinkSource.put"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.ArraySinkSource.put" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make an update of the wrapped arrays content.</p>
+<p>Elements with neutral value in the subarray are not written into the
+wrapped array, but the original values are kept.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="volumina.pixelpipeline.datasources.RelabelingArraySource">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline.datasources.</tt><tt class="descname">RelabelingArraySource</tt><big>(</big><em>array</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#RelabelingArraySource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.RelabelingArraySource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#volumina.pixelpipeline.datasources.ArraySource" title="volumina.pixelpipeline.datasources.ArraySource"><tt class="xref py py-class docutils literal"><span class="pre">volumina.pixelpipeline.datasources.ArraySource</span></tt></a></p>
+<p>Applies a relabeling to each request before passing it on
+Currently, it casts everything to uint8, so be careful.</p>
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.datasources.RelabelingArraySource.isDirty">
+<tt class="descname">isDirty</tt><a class="headerlink" href="#volumina.pixelpipeline.datasources.RelabelingArraySource.isDirty" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.RelabelingArraySource.setRelabeling">
+<tt class="descname">setRelabeling</tt><big>(</big><em>relabeling</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#RelabelingArraySource.setRelabeling"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.RelabelingArraySource.setRelabeling" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets new relabeling vector. It should have a len(relabling) == max(your data)+1
+and give, for each possible data value x, the relabling as relabeling[x].</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.RelabelingArraySource.clearRelabeling">
+<tt class="descname">clearRelabeling</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#RelabelingArraySource.clearRelabeling"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.RelabelingArraySource.clearRelabeling" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.RelabelingArraySource.setRelabelingEntry">
+<tt class="descname">setRelabelingEntry</tt><big>(</big><em>index</em>, <em>value</em>, <em>setDirty=True</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#RelabelingArraySource.setRelabelingEntry"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.RelabelingArraySource.setRelabelingEntry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the entry for data value index to value, such that afterwards
+relabeling[index] =  value.</p>
+<p>If setDirty is true, the source will signal dirtyness. If you plan to issue many calls to this function
+in a loop, setDirty to true only on the last call.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.RelabelingArraySource.request">
+<tt class="descname">request</tt><big>(</big><em>slicing</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#RelabelingArraySource.request"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.RelabelingArraySource.request" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="volumina.pixelpipeline.datasources.LazyflowRequest">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline.datasources.</tt><tt class="descname">LazyflowRequest</tt><big>(</big><em>op</em>, <em>slicing</em>, <em>prio</em>, <em>objectName='Unnamed LazyflowRequest'</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#LazyflowRequest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.LazyflowRequest" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.LazyflowRequest.wait">
+<tt class="descname">wait</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#LazyflowRequest.wait"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.LazyflowRequest.wait" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.LazyflowRequest.getResult">
+<tt class="descname">getResult</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#LazyflowRequest.getResult"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.LazyflowRequest.getResult" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.LazyflowRequest.cancel">
+<tt class="descname">cancel</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#LazyflowRequest.cancel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.LazyflowRequest.cancel" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.LazyflowRequest.submit">
+<tt class="descname">submit</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#LazyflowRequest.submit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.LazyflowRequest.submit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.LazyflowRequest.notify">
+<tt class="descname">notify</tt><big>(</big><em>callback</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#LazyflowRequest.notify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.LazyflowRequest.notify" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="volumina.pixelpipeline.datasources.weakref_setDirtyLF">
+<tt class="descclassname">volumina.pixelpipeline.datasources.</tt><tt class="descname">weakref_setDirtyLF</tt><big>(</big><em>wref</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#weakref_setDirtyLF"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.weakref_setDirtyLF" title="Permalink to this definition">¶</a></dt>
+<dd><p>LazyflowSource uses this function to subscribe to dirty notifications without giving out a shared reference to itself.
+Otherwise, LazyflowSource.__del__ would never be called.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="volumina.pixelpipeline.datasources.LazyflowSource">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline.datasources.</tt><tt class="descname">LazyflowSource</tt><big>(</big><em>outslot</em>, <em>priority=0</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#LazyflowSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.LazyflowSource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">PyQt4.QtCore.QObject</span></tt></p>
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.datasources.LazyflowSource.isDirty">
+<tt class="descname">isDirty</tt><a class="headerlink" href="#volumina.pixelpipeline.datasources.LazyflowSource.isDirty" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.datasources.LazyflowSource.numberOfChannelsChanged">
+<tt class="descname">numberOfChannelsChanged</tt><a class="headerlink" href="#volumina.pixelpipeline.datasources.LazyflowSource.numberOfChannelsChanged" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.datasources.LazyflowSource.dataSlot">
+<tt class="descname">dataSlot</tt><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#LazyflowSource.dataSlot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.LazyflowSource.dataSlot" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.datasources.LazyflowSource.numberOfChannels">
+<tt class="descname">numberOfChannels</tt><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#LazyflowSource.numberOfChannels"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.LazyflowSource.numberOfChannels" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.LazyflowSource.clean_up">
+<tt class="descname">clean_up</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#LazyflowSource.clean_up"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.LazyflowSource.clean_up" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.LazyflowSource.dtype">
+<tt class="descname">dtype</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#LazyflowSource.dtype"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.LazyflowSource.dtype" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.LazyflowSource.request">
+<tt class="descname">request</tt><big>(</big><em>slicing</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#LazyflowSource.request"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.LazyflowSource.request" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.LazyflowSource.setDirty">
+<tt class="descname">setDirty</tt><big>(</big><em>slicing</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#LazyflowSource.setDirty"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.LazyflowSource.setDirty" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="volumina.pixelpipeline.datasources.LazyflowSinkSource">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline.datasources.</tt><tt class="descname">LazyflowSinkSource</tt><big>(</big><em>outslot</em>, <em>inslot</em>, <em>priority=0</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#LazyflowSinkSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.LazyflowSinkSource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#volumina.pixelpipeline.datasources.LazyflowSource" title="volumina.pixelpipeline.datasources.LazyflowSource"><tt class="xref py py-class docutils literal"><span class="pre">volumina.pixelpipeline.datasources.LazyflowSource</span></tt></a></p>
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.LazyflowSinkSource.put">
+<tt class="descname">put</tt><big>(</big><em>slicing</em>, <em>array</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#LazyflowSinkSource.put"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.LazyflowSinkSource.put" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="volumina.pixelpipeline.datasources.ConstantRequest">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline.datasources.</tt><tt class="descname">ConstantRequest</tt><big>(</big><em>result</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#ConstantRequest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.ConstantRequest" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.ConstantRequest.wait">
+<tt class="descname">wait</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#ConstantRequest.wait"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.ConstantRequest.wait" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.ConstantRequest.getResult">
+<tt class="descname">getResult</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#ConstantRequest.getResult"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.ConstantRequest.getResult" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.ConstantRequest.cancel">
+<tt class="descname">cancel</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#ConstantRequest.cancel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.ConstantRequest.cancel" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.ConstantRequest.submit">
+<tt class="descname">submit</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#ConstantRequest.submit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.ConstantRequest.submit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.ConstantRequest.adjustPriority">
+<tt class="descname">adjustPriority</tt><big>(</big><em>delta</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#ConstantRequest.adjustPriority"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.ConstantRequest.adjustPriority" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.ConstantRequest.notify">
+<tt class="descname">notify</tt><big>(</big><em>callback</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#ConstantRequest.notify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.ConstantRequest.notify" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="volumina.pixelpipeline.datasources.ConstantSource">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline.datasources.</tt><tt class="descname">ConstantSource</tt><big>(</big><em>constant=0</em>, <em>dtype=&lt;type 'numpy.uint8'&gt;</em>, <em>parent=None</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#ConstantSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.ConstantSource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">PyQt4.QtCore.QObject</span></tt></p>
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.datasources.ConstantSource.isDirty">
+<tt class="descname">isDirty</tt><a class="headerlink" href="#volumina.pixelpipeline.datasources.ConstantSource.isDirty" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.datasources.ConstantSource.idChanged">
+<tt class="descname">idChanged</tt><a class="headerlink" href="#volumina.pixelpipeline.datasources.ConstantSource.idChanged" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.datasources.ConstantSource.numberOfChannelsChanged">
+<tt class="descname">numberOfChannelsChanged</tt><a class="headerlink" href="#volumina.pixelpipeline.datasources.ConstantSource.numberOfChannelsChanged" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.datasources.ConstantSource.numberOfChannels">
+<tt class="descname">numberOfChannels</tt><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#ConstantSource.numberOfChannels"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.ConstantSource.numberOfChannels" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.datasources.ConstantSource.constant">
+<tt class="descname">constant</tt><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#ConstantSource.constant"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.ConstantSource.constant" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.ConstantSource.clean_up">
+<tt class="descname">clean_up</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#ConstantSource.clean_up"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.ConstantSource.clean_up" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.ConstantSource.id">
+<tt class="descname">id</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#ConstantSource.id"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.ConstantSource.id" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.ConstantSource.request">
+<tt class="descname">request</tt><big>(</big><em>slicing</em>, <em>through=None</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#ConstantSource.request"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.ConstantSource.request" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.ConstantSource.setDirty">
+<tt class="descname">setDirty</tt><big>(</big><em>slicing</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#ConstantSource.setDirty"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.ConstantSource.setDirty" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.ConstantSource.dtype">
+<tt class="descname">dtype</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#ConstantSource.dtype"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.ConstantSource.dtype" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="volumina.pixelpipeline.datasources.MinMaxUpdateRequest">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline.datasources.</tt><tt class="descname">MinMaxUpdateRequest</tt><big>(</big><em>rawRequest</em>, <em>update_func</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#MinMaxUpdateRequest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.MinMaxUpdateRequest" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.MinMaxUpdateRequest.wait">
+<tt class="descname">wait</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#MinMaxUpdateRequest.wait"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.MinMaxUpdateRequest.wait" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.MinMaxUpdateRequest.notify">
+<tt class="descname">notify</tt><big>(</big><em>callback</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#MinMaxUpdateRequest.notify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.MinMaxUpdateRequest.notify" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.MinMaxUpdateRequest.getResult">
+<tt class="descname">getResult</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#MinMaxUpdateRequest.getResult"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.MinMaxUpdateRequest.getResult" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="volumina.pixelpipeline.datasources.MinMaxSource">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline.datasources.</tt><tt class="descname">MinMaxSource</tt><big>(</big><em>rawSource</em>, <em>parent=None</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#MinMaxSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.MinMaxSource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">PyQt4.QtCore.QObject</span></tt></p>
+<p>A datasource that serves as a normalizing decorator for other datasources.</p>
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.datasources.MinMaxSource.isDirty">
+<tt class="descname">isDirty</tt><a class="headerlink" href="#volumina.pixelpipeline.datasources.MinMaxSource.isDirty" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.datasources.MinMaxSource.boundsChanged">
+<tt class="descname">boundsChanged</tt><a class="headerlink" href="#volumina.pixelpipeline.datasources.MinMaxSource.boundsChanged" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.datasources.MinMaxSource.numberOfChannelsChanged">
+<tt class="descname">numberOfChannelsChanged</tt><a class="headerlink" href="#volumina.pixelpipeline.datasources.MinMaxSource.numberOfChannelsChanged" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.datasources.MinMaxSource.numberOfChannels">
+<tt class="descname">numberOfChannels</tt><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#MinMaxSource.numberOfChannels"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.MinMaxSource.numberOfChannels" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.MinMaxSource.clean_up">
+<tt class="descname">clean_up</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#MinMaxSource.clean_up"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.MinMaxSource.clean_up" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.datasources.MinMaxSource.dataSlot">
+<tt class="descname">dataSlot</tt><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#MinMaxSource.dataSlot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.MinMaxSource.dataSlot" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.MinMaxSource.dtype">
+<tt class="descname">dtype</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#MinMaxSource.dtype"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.MinMaxSource.dtype" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.MinMaxSource.request">
+<tt class="descname">request</tt><big>(</big><em>slicing</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#MinMaxSource.request"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.MinMaxSource.request" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.datasources.MinMaxSource.setDirty">
+<tt class="descname">setDirty</tt><big>(</big><em>slicing</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/datasources.html#MinMaxSource.setDirty"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.datasources.MinMaxSource.setDirty" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-volumina.pixelpipeline.imagepump">
+<span id="imagepump-module"></span><h2><tt class="xref py py-mod docutils literal"><span class="pre">imagepump</span></tt> Module<a class="headerlink" href="#module-volumina.pixelpipeline.imagepump" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="volumina.pixelpipeline.imagepump.StackedImageSources">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline.imagepump.</tt><tt class="descname">StackedImageSources</tt><big>(</big><em>layerStackModel</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagepump.html#StackedImageSources"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagepump.StackedImageSources" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">PyQt4.QtCore.QObject</span></tt></p>
+<p>Manages an ordered stack of image sources.</p>
+<p>The StackedImageSources manages the &#8216;add&#8217; and &#8216;remove&#8217; operation to a stack
+of objects derived from &#8216;ImageSource&#8217;. The stacking order mirrors the
+LayerStackModel, and each Layer object has a corresponding ImageSource
+object that can be queried to produce images which adhere to the
+specification as defined in the Layer object.</p>
+<p>Imagesource indices in the stack correspond to row numbers. So the
+topmost imagesource has an index 0, the second-to-the-top an index
+of 1 and so on. This is different from other stacks, where the
+bottommost item has the lowest index.</p>
+<p>Layers from the underlying layerstack have to be registered
+explicitly to become active in the StackedImageSources. If
+registered layers are removed in the underlying layerstack they
+are automatically deregistered.</p>
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.imagepump.StackedImageSources.layerDirty">
+<tt class="descname">layerDirty</tt><a class="headerlink" href="#volumina.pixelpipeline.imagepump.StackedImageSources.layerDirty" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.imagepump.StackedImageSources.visibleChanged">
+<tt class="descname">visibleChanged</tt><a class="headerlink" href="#volumina.pixelpipeline.imagepump.StackedImageSources.visibleChanged" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.imagepump.StackedImageSources.opacityChanged">
+<tt class="descname">opacityChanged</tt><a class="headerlink" href="#volumina.pixelpipeline.imagepump.StackedImageSources.opacityChanged" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.imagepump.StackedImageSources.sizeChanged">
+<tt class="descname">sizeChanged</tt><a class="headerlink" href="#volumina.pixelpipeline.imagepump.StackedImageSources.sizeChanged" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.imagepump.StackedImageSources.orderChanged">
+<tt class="descname">orderChanged</tt><a class="headerlink" href="#volumina.pixelpipeline.imagepump.StackedImageSources.orderChanged" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.imagepump.StackedImageSources.stackIdChanged">
+<tt class="descname">stackIdChanged</tt><a class="headerlink" href="#volumina.pixelpipeline.imagepump.StackedImageSources.stackIdChanged" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.imagepump.StackedImageSources.stackId">
+<tt class="descname">stackId</tt><a class="reference internal" href="modules/volumina/pixelpipeline/imagepump.html#StackedImageSources.stackId"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagepump.StackedImageSources.stackId" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="volumina.pixelpipeline.imagepump.StackedImageSources.VisibleView">
+<em class="property">class </em><tt class="descname">VisibleView</tt><big>(</big><em>sims</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagepump.html#StackedImageSources.VisibleView"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagepump.StackedImageSources.VisibleView" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">volumina.pixelpipeline.imagepump._ViewBase</span></tt></p>
+</dd></dl>
+
+<dl class="class">
+<dt id="volumina.pixelpipeline.imagepump.StackedImageSources.OccludedView">
+<em class="property">class </em><tt class="descclassname">StackedImageSources.</tt><tt class="descname">OccludedView</tt><big>(</big><em>sims</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagepump.html#StackedImageSources.OccludedView"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagepump.StackedImageSources.OccludedView" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">volumina.pixelpipeline.imagepump._ViewBase</span></tt></p>
+</dd></dl>
+
+<dl class="class">
+<dt id="volumina.pixelpipeline.imagepump.StackedImageSources.OpacityView">
+<em class="property">class </em><tt class="descclassname">StackedImageSources.</tt><tt class="descname">OpacityView</tt><big>(</big><em>sims</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagepump.html#StackedImageSources.OpacityView"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagepump.StackedImageSources.OpacityView" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">volumina.pixelpipeline.imagepump._ViewBase</span></tt></p>
+</dd></dl>
+
+<dl class="class">
+<dt id="volumina.pixelpipeline.imagepump.StackedImageSources.ImageSourceView">
+<em class="property">class </em><tt class="descclassname">StackedImageSources.</tt><tt class="descname">ImageSourceView</tt><big>(</big><em>sims</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagepump.html#StackedImageSources.ImageSourceView"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagepump.StackedImageSources.ImageSourceView" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">volumina.pixelpipeline.imagepump._ViewBase</span></tt></p>
+</dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagepump.StackedImageSources.getVisible">
+<tt class="descclassname">StackedImageSources.</tt><tt class="descname">getVisible</tt><big>(</big><em>row</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagepump.html#StackedImageSources.getVisible"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagepump.StackedImageSources.getVisible" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagepump.StackedImageSources.getOpacity">
+<tt class="descclassname">StackedImageSources.</tt><tt class="descname">getOpacity</tt><big>(</big><em>row</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagepump.html#StackedImageSources.getOpacity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagepump.StackedImageSources.getOpacity" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagepump.StackedImageSources.getImageSource">
+<tt class="descclassname">StackedImageSources.</tt><tt class="descname">getImageSource</tt><big>(</big><em>row</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagepump.html#StackedImageSources.getImageSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagepump.StackedImageSources.getImageSource" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagepump.StackedImageSources.viewVisible">
+<tt class="descclassname">StackedImageSources.</tt><tt class="descname">viewVisible</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagepump.html#StackedImageSources.viewVisible"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagepump.StackedImageSources.viewVisible" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagepump.StackedImageSources.viewOccluded">
+<tt class="descclassname">StackedImageSources.</tt><tt class="descname">viewOccluded</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagepump.html#StackedImageSources.viewOccluded"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagepump.StackedImageSources.viewOccluded" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagepump.StackedImageSources.viewOpacity">
+<tt class="descclassname">StackedImageSources.</tt><tt class="descname">viewOpacity</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagepump.html#StackedImageSources.viewOpacity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagepump.StackedImageSources.viewOpacity" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagepump.StackedImageSources.viewImageSources">
+<tt class="descclassname">StackedImageSources.</tt><tt class="descname">viewImageSources</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagepump.html#StackedImageSources.viewImageSources"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagepump.StackedImageSources.viewImageSources" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagepump.StackedImageSources.register">
+<tt class="descclassname">StackedImageSources.</tt><tt class="descname">register</tt><big>(</big><em>layer</em>, <em>imageSource</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagepump.html#StackedImageSources.register"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagepump.StackedImageSources.register" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagepump.StackedImageSources.deregister">
+<tt class="descclassname">StackedImageSources.</tt><tt class="descname">deregister</tt><big>(</big><em>layer</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagepump.html#StackedImageSources.deregister"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagepump.StackedImageSources.deregister" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagepump.StackedImageSources.clear">
+<tt class="descclassname">StackedImageSources.</tt><tt class="descname">clear</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagepump.html#StackedImageSources.clear"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagepump.StackedImageSources.clear" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagepump.StackedImageSources.getRegisteredLayers">
+<tt class="descclassname">StackedImageSources.</tt><tt class="descname">getRegisteredLayers</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagepump.html#StackedImageSources.getRegisteredLayers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagepump.StackedImageSources.getRegisteredLayers" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagepump.StackedImageSources.isRegistered">
+<tt class="descclassname">StackedImageSources.</tt><tt class="descname">isRegistered</tt><big>(</big><em>layer</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagepump.html#StackedImageSources.isRegistered"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagepump.StackedImageSources.isRegistered" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagepump.StackedImageSources.firstFullyOpaque">
+<tt class="descclassname">StackedImageSources.</tt><tt class="descname">firstFullyOpaque</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagepump.html#StackedImageSources.firstFullyOpaque"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagepump.StackedImageSources.firstFullyOpaque" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return index of the first fully opaque imagesource.</p>
+<p>An imagesource is fully opaque when:
+* it is visible
+* its opacity is 1.0
+* the corresponding layer is opaque (i.e. there are</p>
+<blockquote>
+<div>no transparent &#8216;holes&#8217; in the layer)</div></blockquote>
+</dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagepump.StackedImageSources.isOccluded">
+<tt class="descclassname">StackedImageSources.</tt><tt class="descname">isOccluded</tt><big>(</big><em>ims</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagepump.html#StackedImageSources.isOccluded"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagepump.StackedImageSources.isOccluded" title="Permalink to this definition">¶</a></dt>
+<dd><p>Test if imagesource is below the first fully opaque layer.</p>
+<p>An occluded imagesource cannot be &#8216;seen&#8217; when looking at the
+stack from &#8216;above&#8217;. This property is useful to tune the image
+rendering.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagepump.StackedImageSources.isVisible">
+<tt class="descclassname">StackedImageSources.</tt><tt class="descname">isVisible</tt><big>(</big><em>ims</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagepump.html#StackedImageSources.isVisible"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagepump.StackedImageSources.isVisible" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="volumina.pixelpipeline.imagepump.ImagePump">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline.imagepump.</tt><tt class="descname">ImagePump</tt><big>(</big><em>layerStackModel</em>, <em>sliceProjection</em>, <em>sync_along=(0</em>, <em>1</em>, <em>2)</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagepump.html#ImagePump"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagepump.ImagePump" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Manages a pixelpipeline to render images of slices through high-dimensional data.</p>
+<p>At creation time the image pump takes a layerstack with high-dimensional data
+sources (not simply 2D data) as input. It generates slice sources
+for all data sources according to a projection provided by the
+caller. Subsequently, image sources are created from the slice
+sources&#8212;one image source per layer. The image sources are
+managed by a StackedImageSources instance. The slice sources are
+stored in a SyncedSliceSources instance.</p>
+<p>At run time the ImagePump monitors signals from its contained data
+structures (in particular, the slice sources, the
+SyncedSliceSources container, and the layer stack) and updates the
+stacked image sources if necessary.</p>
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.imagepump.ImagePump.syncedSliceSources">
+<tt class="descname">syncedSliceSources</tt><a class="reference internal" href="modules/volumina/pixelpipeline/imagepump.html#ImagePump.syncedSliceSources"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagepump.ImagePump.syncedSliceSources" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.imagepump.ImagePump.stackedImageSources">
+<tt class="descname">stackedImageSources</tt><a class="reference internal" href="modules/volumina/pixelpipeline/imagepump.html#ImagePump.stackedImageSources"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagepump.ImagePump.stackedImageSources" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagepump.ImagePump.layerToSliceSources">
+<tt class="descname">layerToSliceSources</tt><big>(</big><em>layer</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagepump.html#ImagePump.layerToSliceSources"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagepump.ImagePump.layerToSliceSources" title="Permalink to this definition">¶</a></dt>
+<dd><p>Map from Layer instance to SliceSource instances.</p>
+<p>returns: list of one or more SliceSource instances</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagepump.ImagePump.sliceSourceToImageSource">
+<tt class="descname">sliceSourceToImageSource</tt><big>(</big><em>slicesource</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagepump.html#ImagePump.sliceSourceToImageSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagepump.ImagePump.sliceSourceToImageSource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Map from SliceSource instance to ImageSource instance.</p>
+<p>This is a non-injective mapping, that is, more than one
+slice source can map to the same image source.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-volumina.pixelpipeline.imagesourcefactories">
+<span id="imagesourcefactories-module"></span><h2><tt class="xref py py-mod docutils literal"><span class="pre">imagesourcefactories</span></tt> Module<a class="headerlink" href="#module-volumina.pixelpipeline.imagesourcefactories" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-volumina.pixelpipeline.imagesources">
+<span id="imagesources-module"></span><h2><tt class="xref py py-mod docutils literal"><span class="pre">imagesources</span></tt> Module<a class="headerlink" href="#module-volumina.pixelpipeline.imagesources" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="volumina.pixelpipeline.imagesources.ImageSource">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline.imagesources.</tt><tt class="descname">ImageSource</tt><big>(</big><em>guarantees_opaqueness=False</em>, <em>parent=None</em>, <em>direct=False</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#ImageSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.ImageSource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">PyQt4.QtCore.QObject</span></tt></p>
+<p>Partial implemented base class for image sources</p>
+<p>Signals:
+isDirty &#8211; a rectangular region has changed; transmits</p>
+<blockquote>
+<div>an empty QRect if the whole image is dirty</div></blockquote>
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.imagesources.ImageSource.isDirty">
+<tt class="descname">isDirty</tt><a class="headerlink" href="#volumina.pixelpipeline.imagesources.ImageSource.isDirty" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagesources.ImageSource.request">
+<tt class="descname">request</tt><big>(</big><em>rect</em>, <em>along_through=None</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#ImageSource.request"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.ImageSource.request" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagesources.ImageSource.setDirty">
+<tt class="descname">setDirty</tt><big>(</big><em>slicing</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#ImageSource.setDirty"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.ImageSource.setDirty" title="Permalink to this definition">¶</a></dt>
+<dd><p>Mark a region of the image as dirty.</p>
+<dl class="docutils">
+<dt>slicing &#8211; if one ore more slices in the slicing</dt>
+<dd>are unbounded, the whole image is marked dirty;
+since an image has two dimensions, only the first
+two slices in the slicing are used</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagesources.ImageSource.isOpaque">
+<tt class="descname">isOpaque</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#ImageSource.isOpaque"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.ImageSource.isOpaque" title="Permalink to this definition">¶</a></dt>
+<dd><p>Image is opaque everywhere (i.e. no pixel has an alpha value != 255).</p>
+<p>If the ImageSource can give an opaqueness guarantee,
+performance can be improved since layers occluded by this
+source don&#8217;t have to be rendered in some cases.</p>
+<p>Warning: Can cause rendering bugs: In doubt return False.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="volumina.pixelpipeline.imagesources.GrayscaleImageSource">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline.imagesources.</tt><tt class="descname">GrayscaleImageSource</tt><big>(</big><em>arraySource2D</em>, <em>layer</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#GrayscaleImageSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.GrayscaleImageSource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#volumina.pixelpipeline.imagesources.ImageSource" title="volumina.pixelpipeline.imagesources.ImageSource"><tt class="xref py py-class docutils literal"><span class="pre">volumina.pixelpipeline.imagesources.ImageSource</span></tt></a></p>
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.imagesources.GrayscaleImageSource.loggingName">
+<tt class="descname">loggingName</tt><em class="property"> = 'volumina.pixelpipeline.imagesources.GrayscaleImageSource'</em><a class="headerlink" href="#volumina.pixelpipeline.imagesources.GrayscaleImageSource.loggingName" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.imagesources.GrayscaleImageSource.logger">
+<tt class="descname">logger</tt><em class="property"> = &lt;logging.Logger object at 0x5371750&gt;</em><a class="headerlink" href="#volumina.pixelpipeline.imagesources.GrayscaleImageSource.logger" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagesources.GrayscaleImageSource.request">
+<tt class="descname">request</tt><big>(</big><em>qrect</em>, <em>along_through=None</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#GrayscaleImageSource.request"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.GrayscaleImageSource.request" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="volumina.pixelpipeline.imagesources.GrayscaleImageRequest">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline.imagesources.</tt><tt class="descname">GrayscaleImageRequest</tt><big>(</big><em>arrayrequest</em>, <em>normalize=None</em>, <em>direct=False</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#GrayscaleImageRequest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.GrayscaleImageRequest" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.imagesources.GrayscaleImageRequest.loggingName">
+<tt class="descname">loggingName</tt><em class="property"> = 'volumina.pixelpipeline.imagesources.GrayscaleImageRequest'</em><a class="headerlink" href="#volumina.pixelpipeline.imagesources.GrayscaleImageRequest.loggingName" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.imagesources.GrayscaleImageRequest.logger">
+<tt class="descname">logger</tt><em class="property"> = &lt;logging.Logger object at 0x5371910&gt;</em><a class="headerlink" href="#volumina.pixelpipeline.imagesources.GrayscaleImageRequest.logger" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagesources.GrayscaleImageRequest.wait">
+<tt class="descname">wait</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#GrayscaleImageRequest.wait"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.GrayscaleImageRequest.wait" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagesources.GrayscaleImageRequest.toImage">
+<tt class="descname">toImage</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#GrayscaleImageRequest.toImage"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.GrayscaleImageRequest.toImage" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagesources.GrayscaleImageRequest.notify">
+<tt class="descname">notify</tt><big>(</big><em>callback</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#GrayscaleImageRequest.notify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.GrayscaleImageRequest.notify" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="volumina.pixelpipeline.imagesources.AlphaModulatedImageSource">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline.imagesources.</tt><tt class="descname">AlphaModulatedImageSource</tt><big>(</big><em>arraySource2D</em>, <em>layer</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#AlphaModulatedImageSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.AlphaModulatedImageSource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#volumina.pixelpipeline.imagesources.ImageSource" title="volumina.pixelpipeline.imagesources.ImageSource"><tt class="xref py py-class docutils literal"><span class="pre">volumina.pixelpipeline.imagesources.ImageSource</span></tt></a></p>
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagesources.AlphaModulatedImageSource.request">
+<tt class="descname">request</tt><big>(</big><em>qrect</em>, <em>along_through=None</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#AlphaModulatedImageSource.request"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.AlphaModulatedImageSource.request" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="volumina.pixelpipeline.imagesources.AlphaModulatedImageRequest">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline.imagesources.</tt><tt class="descname">AlphaModulatedImageRequest</tt><big>(</big><em>arrayrequest</em>, <em>tintColor</em>, <em>normalize=(0</em>, <em>255)</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#AlphaModulatedImageRequest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.AlphaModulatedImageRequest" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.imagesources.AlphaModulatedImageRequest.loggingName">
+<tt class="descname">loggingName</tt><em class="property"> = 'volumina.pixelpipeline.imagesources.AlphaModulatedImageRequest'</em><a class="headerlink" href="#volumina.pixelpipeline.imagesources.AlphaModulatedImageRequest.loggingName" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.imagesources.AlphaModulatedImageRequest.logger">
+<tt class="descname">logger</tt><em class="property"> = &lt;logging.Logger object at 0x5371a10&gt;</em><a class="headerlink" href="#volumina.pixelpipeline.imagesources.AlphaModulatedImageRequest.logger" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagesources.AlphaModulatedImageRequest.wait">
+<tt class="descname">wait</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#AlphaModulatedImageRequest.wait"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.AlphaModulatedImageRequest.wait" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagesources.AlphaModulatedImageRequest.toImage">
+<tt class="descname">toImage</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#AlphaModulatedImageRequest.toImage"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.AlphaModulatedImageRequest.toImage" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagesources.AlphaModulatedImageRequest.notify">
+<tt class="descname">notify</tt><big>(</big><em>callback</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#AlphaModulatedImageRequest.notify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.AlphaModulatedImageRequest.notify" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="volumina.pixelpipeline.imagesources.ColortableImageSource">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline.imagesources.</tt><tt class="descname">ColortableImageSource</tt><big>(</big><em>arraySource2D</em>, <em>layer</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#ColortableImageSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.ColortableImageSource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#volumina.pixelpipeline.imagesources.ImageSource" title="volumina.pixelpipeline.imagesources.ImageSource"><tt class="xref py py-class docutils literal"><span class="pre">volumina.pixelpipeline.imagesources.ImageSource</span></tt></a></p>
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.imagesources.ColortableImageSource.loggingName">
+<tt class="descname">loggingName</tt><em class="property"> = 'volumina.pixelpipeline.imagesources.ColortableImageSource'</em><a class="headerlink" href="#volumina.pixelpipeline.imagesources.ColortableImageSource.loggingName" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.imagesources.ColortableImageSource.logger">
+<tt class="descname">logger</tt><em class="property"> = &lt;logging.Logger object at 0x5371ad0&gt;</em><a class="headerlink" href="#volumina.pixelpipeline.imagesources.ColortableImageSource.logger" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagesources.ColortableImageSource.updateColorTable">
+<tt class="descname">updateColorTable</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#ColortableImageSource.updateColorTable"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.ColortableImageSource.updateColorTable" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagesources.ColortableImageSource.request">
+<tt class="descname">request</tt><big>(</big><em>qrect</em>, <em>along_through=None</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#ColortableImageSource.request"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.ColortableImageSource.request" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="volumina.pixelpipeline.imagesources.ColortableImageRequest">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline.imagesources.</tt><tt class="descname">ColortableImageRequest</tt><big>(</big><em>arrayrequest</em>, <em>colorTable</em>, <em>normalize</em>, <em>direct=False</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#ColortableImageRequest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.ColortableImageRequest" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.imagesources.ColortableImageRequest.loggingName">
+<tt class="descname">loggingName</tt><em class="property"> = 'volumina.pixelpipeline.imagesources.ColortableImageRequest'</em><a class="headerlink" href="#volumina.pixelpipeline.imagesources.ColortableImageRequest.loggingName" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.imagesources.ColortableImageRequest.logger">
+<tt class="descname">logger</tt><em class="property"> = &lt;logging.Logger object at 0x5371b90&gt;</em><a class="headerlink" href="#volumina.pixelpipeline.imagesources.ColortableImageRequest.logger" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagesources.ColortableImageRequest.wait">
+<tt class="descname">wait</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#ColortableImageRequest.wait"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.ColortableImageRequest.wait" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagesources.ColortableImageRequest.toImage">
+<tt class="descname">toImage</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#ColortableImageRequest.toImage"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.ColortableImageRequest.toImage" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagesources.ColortableImageRequest.notify">
+<tt class="descname">notify</tt><big>(</big><em>callback</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#ColortableImageRequest.notify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.ColortableImageRequest.notify" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="volumina.pixelpipeline.imagesources.RGBAImageSource">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline.imagesources.</tt><tt class="descname">RGBAImageSource</tt><big>(</big><em>red</em>, <em>green</em>, <em>blue</em>, <em>alpha</em>, <em>layer</em>, <em>guarantees_opaqueness=False</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#RGBAImageSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.RGBAImageSource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#volumina.pixelpipeline.imagesources.ImageSource" title="volumina.pixelpipeline.imagesources.ImageSource"><tt class="xref py py-class docutils literal"><span class="pre">volumina.pixelpipeline.imagesources.ImageSource</span></tt></a></p>
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagesources.RGBAImageSource.request">
+<tt class="descname">request</tt><big>(</big><em>qrect</em>, <em>along_through=None</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#RGBAImageSource.request"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.RGBAImageSource.request" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="volumina.pixelpipeline.imagesources.RGBAImageRequest">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline.imagesources.</tt><tt class="descname">RGBAImageRequest</tt><big>(</big><em>r</em>, <em>g</em>, <em>b</em>, <em>a</em>, <em>shape</em>, <em>normalizeR=None</em>, <em>normalizeG=None</em>, <em>normalizeB=None</em>, <em>normalizeA=None</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#RGBAImageRequest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.RGBAImageRequest" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagesources.RGBAImageRequest.wait">
+<tt class="descname">wait</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#RGBAImageRequest.wait"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.RGBAImageRequest.wait" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagesources.RGBAImageRequest.toImage">
+<tt class="descname">toImage</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#RGBAImageRequest.toImage"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.RGBAImageRequest.toImage" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagesources.RGBAImageRequest.notify">
+<tt class="descname">notify</tt><big>(</big><em>callback</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#RGBAImageRequest.notify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.RGBAImageRequest.notify" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="volumina.pixelpipeline.imagesources.RandomImageSource">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline.imagesources.</tt><tt class="descname">RandomImageSource</tt><big>(</big><em>guarantees_opaqueness=False</em>, <em>parent=None</em>, <em>direct=False</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#RandomImageSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.RandomImageSource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#volumina.pixelpipeline.imagesources.ImageSource" title="volumina.pixelpipeline.imagesources.ImageSource"><tt class="xref py py-class docutils literal"><span class="pre">volumina.pixelpipeline.imagesources.ImageSource</span></tt></a></p>
+<p>Random noise image for testing and debugging.</p>
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagesources.RandomImageSource.request">
+<tt class="descname">request</tt><big>(</big><em>qrect</em>, <em>along_through=None</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#RandomImageSource.request"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.RandomImageSource.request" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="volumina.pixelpipeline.imagesources.RandomImageRequest">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline.imagesources.</tt><tt class="descname">RandomImageRequest</tt><big>(</big><em>shape</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#RandomImageRequest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.RandomImageRequest" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagesources.RandomImageRequest.wait">
+<tt class="descname">wait</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#RandomImageRequest.wait"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.RandomImageRequest.wait" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.imagesources.RandomImageRequest.notify">
+<tt class="descname">notify</tt><big>(</big><em>callback</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/imagesources.html#RandomImageRequest.notify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.imagesources.RandomImageRequest.notify" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-volumina.pixelpipeline.slicesources">
+<span id="slicesources-module"></span><h2><tt class="xref py py-mod docutils literal"><span class="pre">slicesources</span></tt> Module<a class="headerlink" href="#module-volumina.pixelpipeline.slicesources" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="volumina.pixelpipeline.slicesources.SliceRequest">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline.slicesources.</tt><tt class="descname">SliceRequest</tt><big>(</big><em>domainArrayRequest</em>, <em>sliceProjection</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/slicesources.html#SliceRequest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.slicesources.SliceRequest" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<dl class="method">
+<dt id="volumina.pixelpipeline.slicesources.SliceRequest.wait">
+<tt class="descname">wait</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/slicesources.html#SliceRequest.wait"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.slicesources.SliceRequest.wait" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.slicesources.SliceRequest.getResult">
+<tt class="descname">getResult</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/slicesources.html#SliceRequest.getResult"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.slicesources.SliceRequest.getResult" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.slicesources.SliceRequest.notify">
+<tt class="descname">notify</tt><big>(</big><em>callback</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/slicesources.html#SliceRequest.notify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.slicesources.SliceRequest.notify" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.slicesources.SliceRequest.cancel">
+<tt class="descname">cancel</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/slicesources.html#SliceRequest.cancel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.slicesources.SliceRequest.cancel" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.slicesources.SliceRequest.submit">
+<tt class="descname">submit</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/slicesources.html#SliceRequest.submit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.slicesources.SliceRequest.submit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.slicesources.SliceRequest.adjustPriority">
+<tt class="descname">adjustPriority</tt><big>(</big><em>delta</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/slicesources.html#SliceRequest.adjustPriority"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.slicesources.SliceRequest.adjustPriority" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="volumina.pixelpipeline.slicesources.SliceSource">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline.slicesources.</tt><tt class="descname">SliceSource</tt><big>(</big><em>datasource</em>, <em>sliceProjection=&lt;volumina.slicingtools.SliceProjection object at 0x52895d0&gt;</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/slicesources.html#SliceSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.slicesources.SliceSource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">PyQt4.QtCore.QObject</span></tt></p>
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.slicesources.SliceSource.areaDirty">
+<tt class="descname">areaDirty</tt><a class="headerlink" href="#volumina.pixelpipeline.slicesources.SliceSource.areaDirty" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.slicesources.SliceSource.isDirty">
+<tt class="descname">isDirty</tt><a class="headerlink" href="#volumina.pixelpipeline.slicesources.SliceSource.isDirty" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.slicesources.SliceSource.throughChanged">
+<tt class="descname">throughChanged</tt><a class="headerlink" href="#volumina.pixelpipeline.slicesources.SliceSource.throughChanged" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.slicesources.SliceSource.idChanged">
+<tt class="descname">idChanged</tt><a class="headerlink" href="#volumina.pixelpipeline.slicesources.SliceSource.idChanged" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.slicesources.SliceSource.id">
+<tt class="descname">id</tt><a class="reference internal" href="modules/volumina/pixelpipeline/slicesources.html#SliceSource.id"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.slicesources.SliceSource.id" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.slicesources.SliceSource.through">
+<tt class="descname">through</tt><a class="reference internal" href="modules/volumina/pixelpipeline/slicesources.html#SliceSource.through"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.slicesources.SliceSource.through" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.slicesources.SliceSource.setThrough">
+<tt class="descname">setThrough</tt><big>(</big><em>index</em>, <em>value</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/slicesources.html#SliceSource.setThrough"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.slicesources.SliceSource.setThrough" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.slicesources.SliceSource.request">
+<tt class="descname">request</tt><big>(</big><em>slicing2D</em>, <em>along_through=None</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/slicesources.html#SliceSource.request"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.slicesources.SliceSource.request" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a SliceRequest for a subregion of the slice.</p>
+<p>By default the currently set through value is used for
+the slicing. Optionally, some or all through values can
+be set to a another value (useful for requesting out-of-view
+slices as necessary for prefetching).</p>
+<p>Arguments:
+slicing2D    &#8211; pair of &#8216;slice&#8217; objects: abscissa, ordinate
+along_trough &#8211; sequence of pairs or None;</p>
+<blockquote>
+<div>pair is &#8216;(along axis, through value)&#8217;</div></blockquote>
+<p>Returns: a SliceRequest for a 2d array</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.slicesources.SliceSource.setDirty">
+<tt class="descname">setDirty</tt><big>(</big><em>slicing</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/slicesources.html#SliceSource.setDirty"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.slicesources.SliceSource.setDirty" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="volumina.pixelpipeline.slicesources.SyncedSliceSources">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline.slicesources.</tt><tt class="descname">SyncedSliceSources</tt><big>(</big><em>sync_along=(0</em>, <em>1)</em>, <em>initial_through=None</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/slicesources.html#SyncedSliceSources"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.slicesources.SyncedSliceSources" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">PyQt4.QtCore.QObject</span></tt></p>
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.slicesources.SyncedSliceSources.throughChanged">
+<tt class="descname">throughChanged</tt><a class="headerlink" href="#volumina.pixelpipeline.slicesources.SyncedSliceSources.throughChanged" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.slicesources.SyncedSliceSources.idChanged">
+<tt class="descname">idChanged</tt><a class="headerlink" href="#volumina.pixelpipeline.slicesources.SyncedSliceSources.idChanged" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.slicesources.SyncedSliceSources.id">
+<tt class="descname">id</tt><a class="reference internal" href="modules/volumina/pixelpipeline/slicesources.html#SyncedSliceSources.id"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.slicesources.SyncedSliceSources.id" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="volumina.pixelpipeline.slicesources.SyncedSliceSources.through">
+<tt class="descname">through</tt><a class="reference internal" href="modules/volumina/pixelpipeline/slicesources.html#SyncedSliceSources.through"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.slicesources.SyncedSliceSources.through" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.slicesources.SyncedSliceSources.getSyncAlong">
+<tt class="descname">getSyncAlong</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/slicesources.html#SyncedSliceSources.getSyncAlong"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.slicesources.SyncedSliceSources.getSyncAlong" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.slicesources.SyncedSliceSources.setThrough">
+<tt class="descname">setThrough</tt><big>(</big><em>index</em>, <em>value</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/slicesources.html#SyncedSliceSources.setThrough"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.slicesources.SyncedSliceSources.setThrough" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.slicesources.SyncedSliceSources.add">
+<tt class="descname">add</tt><big>(</big><em>sliceSrc</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/slicesources.html#SyncedSliceSources.add"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.slicesources.SyncedSliceSources.add" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.slicesources.SyncedSliceSources.remove">
+<tt class="descname">remove</tt><big>(</big><em>sliceSrc</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/slicesources.html#SyncedSliceSources.remove"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.slicesources.SyncedSliceSources.remove" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="volumina.pixelpipeline.slicesources.SliceSourceTest">
+<em class="property">class </em><tt class="descclassname">volumina.pixelpipeline.slicesources.</tt><tt class="descname">SliceSourceTest</tt><big>(</big><em>methodName='runTest'</em><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/slicesources.html#SliceSourceTest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.slicesources.SliceSourceTest" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">unittest.case.TestCase</span></tt></p>
+<dl class="method">
+<dt id="volumina.pixelpipeline.slicesources.SliceSourceTest.setUp">
+<tt class="descname">setUp</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/slicesources.html#SliceSourceTest.setUp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.slicesources.SliceSourceTest.setUp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.slicesources.SliceSourceTest.testRequest">
+<tt class="descname">testRequest</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/slicesources.html#SliceSourceTest.testRequest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.slicesources.SliceSourceTest.testRequest" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="volumina.pixelpipeline.slicesources.SliceSourceTest.testDirtynessPropagation">
+<tt class="descname">testDirtynessPropagation</tt><big>(</big><big>)</big><a class="reference internal" href="modules/volumina/pixelpipeline/slicesources.html#SliceSourceTest.testDirtynessPropagation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#volumina.pixelpipeline.slicesources.SliceSourceTest.testDirtynessPropagation" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">pixelpipeline Package</a><ul>
+<li><a class="reference internal" href="#module-volumina.pixelpipeline._testing"><tt class="docutils literal"><span class="pre">_testing</span></tt> Module</a></li>
+<li><a class="reference internal" href="#module-volumina.pixelpipeline.asyncabcs"><tt class="docutils literal"><span class="pre">asyncabcs</span></tt> Module</a></li>
+<li><a class="reference internal" href="#module-volumina.pixelpipeline.datasourcefactories"><tt class="docutils literal"><span class="pre">datasourcefactories</span></tt> Module</a></li>
+<li><a class="reference internal" href="#module-volumina.pixelpipeline.datasources"><tt class="docutils literal"><span class="pre">datasources</span></tt> Module</a></li>
+<li><a class="reference internal" href="#module-volumina.pixelpipeline.imagepump"><tt class="docutils literal"><span class="pre">imagepump</span></tt> Module</a></li>
+<li><a class="reference internal" href="#module-volumina.pixelpipeline.imagesourcefactories"><tt class="docutils literal"><span class="pre">imagesourcefactories</span></tt> Module</a></li>
+<li><a class="reference internal" href="#module-volumina.pixelpipeline.imagesources"><tt class="docutils literal"><span class="pre">imagesources</span></tt> Module</a></li>
+<li><a class="reference internal" href="#module-volumina.pixelpipeline.slicesources"><tt class="docutils literal"><span class="pre">slicesources</span></tt> Module</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="volumina.colorama.html"
+                        title="previous chapter">colorama Package</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="volumina.skeletons.html"
+                        title="next chapter">skeletons Package</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="sources/volumina.pixelpipeline.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="volumina.skeletons.html" title="skeletons Package"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="volumina.colorama.html" title="colorama Package"
+             >previous</a> |</li>
+        <li><a href="index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="modules.html" >volumina</a> &raquo;</li>
+          <li><a href="volumina.html" >volumina Package</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Bernhard X. Kausler, Thorben Kröger, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

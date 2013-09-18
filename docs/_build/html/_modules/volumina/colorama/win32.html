@@ -1,0 +1,201 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>volumina.colorama.win32 &mdash; volumina 0.6.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../../static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../static/jquery.js"></script>
+    <script type="text/javascript" src="../../../static/underscore.js"></script>
+    <script type="text/javascript" src="../../../static/doctools.js"></script>
+    <link rel="top" title="volumina 0.6.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for volumina.colorama.win32</h1><div class="highlight"><pre>
+<span class="c"># from winbase.h</span>
+<span class="n">STDOUT</span> <span class="o">=</span> <span class="o">-</span><span class="mi">11</span>
+<span class="n">STDERR</span> <span class="o">=</span> <span class="o">-</span><span class="mi">12</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">ctypes</span> <span class="kn">import</span> <span class="n">windll</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">windll</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">SetConsoleTextAttribute</span> <span class="o">=</span> <span class="k">lambda</span> <span class="o">*</span><span class="n">_</span><span class="p">:</span> <span class="bp">None</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">ctypes</span> <span class="kn">import</span> <span class="p">(</span>
+        <span class="n">byref</span><span class="p">,</span> <span class="n">Structure</span><span class="p">,</span> <span class="n">c_char</span><span class="p">,</span> <span class="n">c_short</span><span class="p">,</span> <span class="n">c_uint32</span><span class="p">,</span> <span class="n">c_ushort</span>
+    <span class="p">)</span>
+
+    <span class="n">handles</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">STDOUT</span><span class="p">:</span> <span class="n">windll</span><span class="o">.</span><span class="n">kernel32</span><span class="o">.</span><span class="n">GetStdHandle</span><span class="p">(</span><span class="n">STDOUT</span><span class="p">),</span>
+        <span class="n">STDERR</span><span class="p">:</span> <span class="n">windll</span><span class="o">.</span><span class="n">kernel32</span><span class="o">.</span><span class="n">GetStdHandle</span><span class="p">(</span><span class="n">STDERR</span><span class="p">),</span>
+    <span class="p">}</span>
+
+    <span class="n">SHORT</span> <span class="o">=</span> <span class="n">c_short</span>
+    <span class="n">WORD</span> <span class="o">=</span> <span class="n">c_ushort</span>
+    <span class="n">DWORD</span> <span class="o">=</span> <span class="n">c_uint32</span>
+    <span class="n">TCHAR</span> <span class="o">=</span> <span class="n">c_char</span>
+
+    <span class="k">class</span> <span class="nc">COORD</span><span class="p">(</span><span class="n">Structure</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;struct in wincon.h&quot;&quot;&quot;</span>
+        <span class="n">_fields_</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">(</span><span class="s">&#39;X&#39;</span><span class="p">,</span> <span class="n">SHORT</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Y&#39;</span><span class="p">,</span> <span class="n">SHORT</span><span class="p">),</span>
+        <span class="p">]</span>
+
+    <span class="k">class</span>  <span class="nc">SMALL_RECT</span><span class="p">(</span><span class="n">Structure</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;struct in wincon.h.&quot;&quot;&quot;</span>
+        <span class="n">_fields_</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">(</span><span class="s">&quot;Left&quot;</span><span class="p">,</span> <span class="n">SHORT</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&quot;Top&quot;</span><span class="p">,</span> <span class="n">SHORT</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&quot;Right&quot;</span><span class="p">,</span> <span class="n">SHORT</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&quot;Bottom&quot;</span><span class="p">,</span> <span class="n">SHORT</span><span class="p">),</span>
+        <span class="p">]</span>
+
+    <span class="k">class</span> <span class="nc">CONSOLE_SCREEN_BUFFER_INFO</span><span class="p">(</span><span class="n">Structure</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;struct in wincon.h.&quot;&quot;&quot;</span>
+        <span class="n">_fields_</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">(</span><span class="s">&quot;dwSize&quot;</span><span class="p">,</span> <span class="n">COORD</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&quot;dwCursorPosition&quot;</span><span class="p">,</span> <span class="n">COORD</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&quot;wAttributes&quot;</span><span class="p">,</span> <span class="n">WORD</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&quot;srWindow&quot;</span><span class="p">,</span> <span class="n">SMALL_RECT</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&quot;dwMaximumWindowSize&quot;</span><span class="p">,</span> <span class="n">COORD</span><span class="p">),</span>
+        <span class="p">]</span>
+        <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s">&#39;(</span><span class="si">%d</span><span class="s">,</span><span class="si">%d</span><span class="s">,</span><span class="si">%d</span><span class="s">,</span><span class="si">%d</span><span class="s">,</span><span class="si">%d</span><span class="s">,</span><span class="si">%d</span><span class="s">,</span><span class="si">%d</span><span class="s">,</span><span class="si">%d</span><span class="s">,</span><span class="si">%d</span><span class="s">,</span><span class="si">%d</span><span class="s">,</span><span class="si">%d</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">dwSize</span><span class="o">.</span><span class="n">Y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dwSize</span><span class="o">.</span><span class="n">X</span>
+                <span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dwCursorPosition</span><span class="o">.</span><span class="n">Y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dwCursorPosition</span><span class="o">.</span><span class="n">X</span>
+                <span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">wAttributes</span>
+                <span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">srWindow</span><span class="o">.</span><span class="n">Top</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">srWindow</span><span class="o">.</span><span class="n">Left</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">srWindow</span><span class="o">.</span><span class="n">Bottom</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">srWindow</span><span class="o">.</span><span class="n">Right</span>
+                <span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dwMaximumWindowSize</span><span class="o">.</span><span class="n">Y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dwMaximumWindowSize</span><span class="o">.</span><span class="n">X</span>
+            <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">GetConsoleScreenBufferInfo</span><span class="p">(</span><span class="n">stream_id</span><span class="o">=</span><span class="n">STDOUT</span><span class="p">):</span>
+        <span class="n">handle</span> <span class="o">=</span> <span class="n">handles</span><span class="p">[</span><span class="n">stream_id</span><span class="p">]</span>
+        <span class="n">csbi</span> <span class="o">=</span> <span class="n">CONSOLE_SCREEN_BUFFER_INFO</span><span class="p">()</span>
+        <span class="n">success</span> <span class="o">=</span> <span class="n">windll</span><span class="o">.</span><span class="n">kernel32</span><span class="o">.</span><span class="n">GetConsoleScreenBufferInfo</span><span class="p">(</span>
+            <span class="n">handle</span><span class="p">,</span> <span class="n">byref</span><span class="p">(</span><span class="n">csbi</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">csbi</span>
+
+
+    <span class="k">def</span> <span class="nf">SetConsoleTextAttribute</span><span class="p">(</span><span class="n">stream_id</span><span class="p">,</span> <span class="n">attrs</span><span class="p">):</span>
+<div class="viewcode-block" id="SetConsoleTextAttribute"><a class="viewcode-back" href="../../../volumina.colorama.html#volumina.colorama.win32.SetConsoleTextAttribute">[docs]</a>        <span class="n">handle</span> <span class="o">=</span> <span class="n">handles</span><span class="p">[</span><span class="n">stream_id</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">windll</span><span class="o">.</span><span class="n">kernel32</span><span class="o">.</span><span class="n">SetConsoleTextAttribute</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">SetConsoleCursorPosition</span><span class="p">(</span><span class="n">stream_id</span><span class="p">,</span> <span class="n">position</span><span class="p">):</span></div>
+        <span class="n">position</span> <span class="o">=</span> <span class="n">COORD</span><span class="p">(</span><span class="o">*</span><span class="n">position</span><span class="p">)</span>
+        <span class="c"># If the position is out of range, do nothing.</span>
+        <span class="k">if</span> <span class="n">position</span><span class="o">.</span><span class="n">Y</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">position</span><span class="o">.</span><span class="n">X</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="c"># Adjust for Windows&#39; SetConsoleCursorPosition:</span>
+        <span class="c">#    1. being 0-based, while ANSI is 1-based.</span>
+        <span class="c">#    2. expecting (x,y), while ANSI uses (y,x).</span>
+        <span class="n">adjusted_position</span> <span class="o">=</span> <span class="n">COORD</span><span class="p">(</span><span class="n">position</span><span class="o">.</span><span class="n">Y</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">position</span><span class="o">.</span><span class="n">X</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="c"># Adjust for viewport&#39;s scroll position</span>
+        <span class="n">sr</span> <span class="o">=</span> <span class="n">GetConsoleScreenBufferInfo</span><span class="p">(</span><span class="n">STDOUT</span><span class="p">)</span><span class="o">.</span><span class="n">srWindow</span>
+        <span class="n">adjusted_position</span><span class="o">.</span><span class="n">Y</span> <span class="o">+=</span> <span class="n">sr</span><span class="o">.</span><span class="n">Top</span>
+        <span class="n">adjusted_position</span><span class="o">.</span><span class="n">X</span> <span class="o">+=</span> <span class="n">sr</span><span class="o">.</span><span class="n">Left</span>
+        <span class="c"># Resume normal processing</span>
+        <span class="n">handle</span> <span class="o">=</span> <span class="n">handles</span><span class="p">[</span><span class="n">stream_id</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">windll</span><span class="o">.</span><span class="n">kernel32</span><span class="o">.</span><span class="n">SetConsoleCursorPosition</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="n">adjusted_position</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">FillConsoleOutputCharacter</span><span class="p">(</span><span class="n">stream_id</span><span class="p">,</span> <span class="n">char</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">start</span><span class="p">):</span>
+        <span class="n">handle</span> <span class="o">=</span> <span class="n">handles</span><span class="p">[</span><span class="n">stream_id</span><span class="p">]</span>
+        <span class="n">char</span> <span class="o">=</span> <span class="n">TCHAR</span><span class="p">(</span><span class="n">char</span><span class="p">)</span>
+        <span class="n">length</span> <span class="o">=</span> <span class="n">DWORD</span><span class="p">(</span><span class="n">length</span><span class="p">)</span>
+        <span class="n">num_written</span> <span class="o">=</span> <span class="n">DWORD</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="c"># Note that this is hard-coded for ANSI (vs wide) bytes.</span>
+        <span class="n">success</span> <span class="o">=</span> <span class="n">windll</span><span class="o">.</span><span class="n">kernel32</span><span class="o">.</span><span class="n">FillConsoleOutputCharacterA</span><span class="p">(</span>
+            <span class="n">handle</span><span class="p">,</span> <span class="n">char</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">byref</span><span class="p">(</span><span class="n">num_written</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">num_written</span><span class="o">.</span><span class="n">value</span>
+
+    <span class="k">def</span> <span class="nf">FillConsoleOutputAttribute</span><span class="p">(</span><span class="n">stream_id</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">start</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39; FillConsoleOutputAttribute( hConsole, csbi.wAttributes, dwConSize, coordScreen, &amp;cCharsWritten )&#39;&#39;&#39;</span>
+        <span class="n">handle</span> <span class="o">=</span> <span class="n">handles</span><span class="p">[</span><span class="n">stream_id</span><span class="p">]</span>
+        <span class="n">attribute</span> <span class="o">=</span> <span class="n">WORD</span><span class="p">(</span><span class="n">attr</span><span class="p">)</span>
+        <span class="n">length</span> <span class="o">=</span> <span class="n">DWORD</span><span class="p">(</span><span class="n">length</span><span class="p">)</span>
+        <span class="n">num_written</span> <span class="o">=</span> <span class="n">DWORD</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="c"># Note that this is hard-coded for ANSI (vs wide) bytes.</span>
+        <span class="k">return</span> <span class="n">windll</span><span class="o">.</span><span class="n">kernel32</span><span class="o">.</span><span class="n">FillConsoleOutputAttribute</span><span class="p">(</span>
+            <span class="n">handle</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">byref</span><span class="p">(</span><span class="n">num_written</span><span class="p">))</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Bernhard X. Kausler, Thorben Kröger, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,143 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>volumina.thresholdingWidget_plugin &mdash; volumina 0.6.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../static/jquery.js"></script>
+    <script type="text/javascript" src="../../static/underscore.js"></script>
+    <script type="text/javascript" src="../../static/doctools.js"></script>
+    <link rel="top" title="volumina 0.6.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for volumina.thresholdingWidget_plugin</h1><div class="highlight"><pre>
+<span class="kn">from</span> <span class="nn">PyQt4.QtDesigner</span> <span class="kn">import</span> <span class="n">QPyDesignerCustomWidgetPlugin</span>
+<span class="kn">from</span> <span class="nn">PyQt4.QtGui</span> <span class="kn">import</span> <span class="n">QPixmap</span><span class="p">,</span> <span class="n">QIcon</span><span class="p">,</span> <span class="n">QColor</span>
+
+<span class="kn">from</span> <span class="nn">volumina.widgets.thresholdingWidget</span> <span class="kn">import</span> <span class="n">ThresholdingWidget</span>
+
+<div class="viewcode-block" id="PyThresholdingWidgetPlugin"><a class="viewcode-back" href="../../volumina.html#volumina.thresholdingWidget_plugin.PyThresholdingWidgetPlugin">[docs]</a><span class="k">class</span> <span class="nc">PyThresholdingWidgetPlugin</span><span class="p">(</span><span class="n">QPyDesignerCustomWidgetPlugin</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="n">QPyDesignerCustomWidgetPlugin</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">initialized</span> <span class="o">=</span> <span class="bp">False</span>
+        
+<div class="viewcode-block" id="PyThresholdingWidgetPlugin.initialize"><a class="viewcode-back" href="../../volumina.html#volumina.thresholdingWidget_plugin.PyThresholdingWidgetPlugin.initialize">[docs]</a>    <span class="k">def</span> <span class="nf">initialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">core</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">initialized</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">initialized</span> <span class="o">=</span> <span class="bp">True</span>
+</div>
+<div class="viewcode-block" id="PyThresholdingWidgetPlugin.isInitialized"><a class="viewcode-back" href="../../volumina.html#volumina.thresholdingWidget_plugin.PyThresholdingWidgetPlugin.isInitialized">[docs]</a>    <span class="k">def</span> <span class="nf">isInitialized</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">initialized</span>
+    </div>
+<div class="viewcode-block" id="PyThresholdingWidgetPlugin.createWidget"><a class="viewcode-back" href="../../volumina.html#volumina.thresholdingWidget_plugin.PyThresholdingWidgetPlugin.createWidget">[docs]</a>    <span class="k">def</span> <span class="nf">createWidget</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">ThresholdingWidget</span><span class="p">(</span><span class="n">parent</span><span class="p">)</span>
+    </div>
+<div class="viewcode-block" id="PyThresholdingWidgetPlugin.name"><a class="viewcode-back" href="../../volumina.html#volumina.thresholdingWidget_plugin.PyThresholdingWidgetPlugin.name">[docs]</a>    <span class="k">def</span> <span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;ThresholdingWidget&quot;</span>
+</div>
+<div class="viewcode-block" id="PyThresholdingWidgetPlugin.group"><a class="viewcode-back" href="../../volumina.html#volumina.thresholdingWidget_plugin.PyThresholdingWidgetPlugin.group">[docs]</a>    <span class="k">def</span> <span class="nf">group</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;ilastik widgets&quot;</span>
+    </div>
+<div class="viewcode-block" id="PyThresholdingWidgetPlugin.icon"><a class="viewcode-back" href="../../volumina.html#volumina.thresholdingWidget_plugin.PyThresholdingWidgetPlugin.icon">[docs]</a>    <span class="k">def</span> <span class="nf">icon</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">QIcon</span><span class="p">(</span><span class="n">QPixmap</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span><span class="mi">16</span><span class="p">))</span>
+                           </div>
+<div class="viewcode-block" id="PyThresholdingWidgetPlugin.toolTip"><a class="viewcode-back" href="../../volumina.html#volumina.thresholdingWidget_plugin.PyThresholdingWidgetPlugin.toolTip">[docs]</a>    <span class="k">def</span> <span class="nf">toolTip</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;&quot;</span>
+    </div>
+<div class="viewcode-block" id="PyThresholdingWidgetPlugin.whatsThis"><a class="viewcode-back" href="../../volumina.html#volumina.thresholdingWidget_plugin.PyThresholdingWidgetPlugin.whatsThis">[docs]</a>    <span class="k">def</span> <span class="nf">whatsThis</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;&quot;</span>
+    </div>
+<div class="viewcode-block" id="PyThresholdingWidgetPlugin.isContainer"><a class="viewcode-back" href="../../volumina.html#volumina.thresholdingWidget_plugin.PyThresholdingWidgetPlugin.isContainer">[docs]</a>    <span class="k">def</span> <span class="nf">isContainer</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">False</span>
+    </div>
+<div class="viewcode-block" id="PyThresholdingWidgetPlugin.domXml"><a class="viewcode-back" href="../../volumina.html#volumina.thresholdingWidget_plugin.PyThresholdingWidgetPlugin.domXml">[docs]</a>    <span class="k">def</span> <span class="nf">domXml</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span>
+               <span class="s">&#39;&lt;widget class=&quot;ThresholdingWidget&quot; name=</span><span class="se">\&quot;</span><span class="s">thresholdingWidget</span><span class="se">\&quot;</span><span class="s">&gt;</span><span class="se">\n</span><span class="s">&#39;</span>
+               <span class="s">&quot;&lt;/widget&gt;</span><span class="se">\n</span><span class="s">&quot;</span>
+               <span class="p">)</span>
+    </div>
+<div class="viewcode-block" id="PyThresholdingWidgetPlugin.includeFile"><a class="viewcode-back" href="../../volumina.html#volumina.thresholdingWidget_plugin.PyThresholdingWidgetPlugin.includeFile">[docs]</a>    <span class="k">def</span> <span class="nf">includeFile</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;volumina.widgets.thresholdingWidget&quot;</span>
+ </div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Bernhard X. Kausler, Thorben Kröger, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

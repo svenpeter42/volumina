@@ -1,0 +1,238 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>volumina.view3d.slicingPlanesWidget &mdash; volumina 0.6.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../../static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../static/jquery.js"></script>
+    <script type="text/javascript" src="../../../static/underscore.js"></script>
+    <script type="text/javascript" src="../../../static/doctools.js"></script>
+    <link rel="top" title="volumina 0.6.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for volumina.view3d.slicingPlanesWidget</h1><div class="highlight"><pre>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">vtk</span> <span class="kn">import</span> <span class="n">vtkPropAssembly</span><span class="p">,</span> <span class="n">vtkImplicitPlaneRepresentation</span><span class="p">,</span> <span class="n">vtkPolyData</span><span class="p">,</span> <span class="n">vtkPoints</span><span class="p">,</span> \
+                <span class="n">vtkCellArray</span><span class="p">,</span> <span class="n">vtkImplicitPlaneWidget2</span><span class="p">,</span> <span class="n">vtkTubeFilter</span><span class="p">,</span> <span class="n">vtkPolyDataMapper</span><span class="p">,</span> \
+                <span class="n">vtkActor</span><span class="p">,</span> <span class="n">vtkPlane</span>
+
+<span class="k">except</span><span class="p">:</span>
+    <span class="k">print</span> <span class="s">&#39;Vtk not found in slicingPlanesWidget&#39;</span>
+    <span class="n">vtkfound</span> <span class="o">=</span> <span class="s">&#39;false&#39;</span>
+
+<span class="c">#*******************************************************************************</span>
+<span class="c"># S l i c i n g P l a n e s W i d g e t                                        *</span>
+<span class="c">#*******************************************************************************</span>
+
+<div class="viewcode-block" id="SlicingPlanesWidget"><a class="viewcode-back" href="../../../volumina.view3d.html#volumina.view3d.slicingPlanesWidget.SlicingPlanesWidget">[docs]</a><span class="k">class</span> <span class="nc">SlicingPlanesWidget</span><span class="p">(</span><span class="n">vtkPropAssembly</span><span class="p">):</span>
+<div class="viewcode-block" id="SlicingPlanesWidget.SetPickable"><a class="viewcode-back" href="../../../volumina.view3d.html#volumina.view3d.slicingPlanesWidget.SlicingPlanesWidget.SetPickable">[docs]</a>    <span class="k">def</span> <span class="nf">SetPickable</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pickable</span><span class="p">):</span>
+        <span class="n">props</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">GetParts</span><span class="p">()</span>
+        <span class="n">props</span><span class="o">.</span><span class="n">InitTraversal</span><span class="p">();</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">props</span><span class="o">.</span><span class="n">GetNumberOfItems</span><span class="p">()):</span>
+            <span class="n">props</span><span class="o">.</span><span class="n">GetNextProp</span><span class="p">()</span><span class="o">.</span><span class="n">SetPickable</span><span class="p">(</span><span class="n">pickable</span><span class="p">)</span>
+    </div>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataShape</span><span class="p">,</span> <span class="n">interactor</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dataShape</span> <span class="o">=</span> <span class="n">dataShape</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">planes</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">coordinate</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lastChangedAxis</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">vtkImplicitPlaneRepresentation</span><span class="p">()</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">SetPlaceFactor</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">OutsideBoundsOn</span><span class="p">()</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">ScaleEnabledOff</span><span class="p">()</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">SetOrigin</span><span class="p">(</span><span class="mf">0.25</span><span class="p">,</span><span class="mf">0.25</span><span class="p">,</span><span class="mf">0.25</span><span class="p">)</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">PlaceWidget</span><span class="p">([</span><span class="mf">0.1</span><span class="p">,</span><span class="n">dataShape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="mf">0.1</span><span class="p">,</span><span class="n">dataShape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="mf">0.1</span><span class="p">,</span><span class="n">dataShape</span><span class="p">[</span><span class="mi">2</span><span class="p">]])</span>
+
+            <span class="n">args</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+            <span class="n">args</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">SetNormal</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">GetSelectedPlaneProperty</span><span class="p">()</span><span class="o">.</span><span class="n">SetColor</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">GetEdgesProperty</span><span class="p">()</span><span class="o">.</span><span class="n">SetColor</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span> <span class="c">#bug in VTK</span>
+
+            <span class="n">p</span><span class="o">.</span><span class="n">GetPlaneProperty</span><span class="p">()</span><span class="o">.</span><span class="n">SetOpacity</span><span class="p">(</span><span class="mf">0.001</span><span class="p">)</span>
+            <span class="c">#do not draw outline</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">GetOutlineProperty</span><span class="p">()</span><span class="o">.</span><span class="n">SetColor</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">GetOutlineProperty</span><span class="p">()</span><span class="o">.</span><span class="n">SetOpacity</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+            <span class="c">#do not draw normal</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">GetSelectedNormalProperty</span><span class="p">()</span><span class="o">.</span><span class="n">SetOpacity</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">GetNormalProperty</span><span class="p">()</span><span class="o">.</span><span class="n">SetOpacity</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">OutlineTranslationOff</span><span class="p">()</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">TubingOff</span><span class="p">()</span>
+            
+            <span class="bp">self</span><span class="o">.</span><span class="n">cross</span> <span class="o">=</span> <span class="n">vtkPolyData</span><span class="p">()</span>
+            <span class="n">points</span> <span class="o">=</span> <span class="n">vtkPoints</span><span class="p">()</span>
+            <span class="n">polys</span> <span class="o">=</span> <span class="n">vtkCellArray</span><span class="p">()</span>
+            <span class="n">points</span><span class="o">.</span><span class="n">SetNumberOfPoints</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+                <span class="n">polys</span><span class="o">.</span><span class="n">InsertNextCell</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+                <span class="n">polys</span><span class="o">.</span><span class="n">InsertCellPoint</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">i</span><span class="p">);</span> <span class="n">polys</span><span class="o">.</span><span class="n">InsertCellPoint</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cross</span><span class="o">.</span><span class="n">SetPoints</span><span class="p">(</span><span class="n">points</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cross</span><span class="o">.</span><span class="n">SetLines</span><span class="p">(</span><span class="n">polys</span><span class="p">)</span>
+            
+            <span class="n">pw</span> <span class="o">=</span> <span class="n">vtkImplicitPlaneWidget2</span><span class="p">()</span>
+            <span class="n">pw</span><span class="o">.</span><span class="n">SetRepresentation</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+            <span class="n">pw</span><span class="o">.</span><span class="n">SetInteractor</span><span class="p">(</span><span class="n">interactor</span><span class="p">)</span>
+            <span class="n">pw</span><span class="o">.</span><span class="n">AddObserver</span><span class="p">(</span><span class="s">&quot;InteractionEvent&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__PlanePositionCallback</span><span class="p">)</span>
+            
+            <span class="bp">self</span><span class="o">.</span><span class="n">planes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pw</span><span class="p">)</span>
+            
+        <span class="n">tubes</span> <span class="o">=</span> <span class="n">vtkTubeFilter</span><span class="p">()</span>
+        <span class="n">tubes</span><span class="o">.</span><span class="n">SetNumberOfSides</span><span class="p">(</span><span class="mi">16</span><span class="p">)</span>
+        <span class="n">tubes</span><span class="o">.</span><span class="n">SetInput</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cross</span><span class="p">)</span>
+        <span class="n">tubes</span><span class="o">.</span><span class="n">SetRadius</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>
+        
+        <span class="n">crossMapper</span> <span class="o">=</span> <span class="n">vtkPolyDataMapper</span><span class="p">()</span>
+        <span class="n">crossMapper</span><span class="o">.</span><span class="n">SetInput</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cross</span><span class="p">)</span>
+        <span class="n">crossActor</span> <span class="o">=</span> <span class="n">vtkActor</span><span class="p">()</span>
+        <span class="n">crossActor</span><span class="o">.</span><span class="n">SetMapper</span><span class="p">(</span><span class="n">crossMapper</span><span class="p">)</span>
+        <span class="n">crossActor</span><span class="o">.</span><span class="n">GetProperty</span><span class="p">()</span><span class="o">.</span><span class="n">SetColor</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">AddPart</span><span class="p">(</span><span class="n">crossActor</span><span class="p">)</span>
+        
+        <span class="c">#initially invoke the event!</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">InvokeEvent</span><span class="p">(</span><span class="s">&quot;CoordinatesEvent&quot;</span><span class="p">)</span>
+    
+<div class="viewcode-block" id="SlicingPlanesWidget.Plane"><a class="viewcode-back" href="../../../volumina.view3d.html#volumina.view3d.slicingPlanesWidget.SlicingPlanesWidget.Plane">[docs]</a>    <span class="k">def</span> <span class="nf">Plane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">axis</span><span class="p">):</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">vtkPlane</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">planes</span><span class="p">[</span><span class="n">axis</span><span class="p">]</span><span class="o">.</span><span class="n">GetRepresentation</span><span class="p">()</span><span class="o">.</span><span class="n">GetPlane</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">p</span>
+</div>
+<div class="viewcode-block" id="SlicingPlanesWidget.PlaneX"><a class="viewcode-back" href="../../../volumina.view3d.html#volumina.view3d.slicingPlanesWidget.SlicingPlanesWidget.PlaneX">[docs]</a>    <span class="k">def</span> <span class="nf">PlaneX</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">Plane</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="SlicingPlanesWidget.PlaneY"><a class="viewcode-back" href="../../../volumina.view3d.html#volumina.view3d.slicingPlanesWidget.SlicingPlanesWidget.PlaneY">[docs]</a>    <span class="k">def</span> <span class="nf">PlaneY</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">Plane</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="SlicingPlanesWidget.PlaneZ"><a class="viewcode-back" href="../../../volumina.view3d.html#volumina.view3d.slicingPlanesWidget.SlicingPlanesWidget.PlaneZ">[docs]</a>    <span class="k">def</span> <span class="nf">PlaneZ</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">Plane</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        </div>
+<div class="viewcode-block" id="SlicingPlanesWidget.ShowPlaneWidget"><a class="viewcode-back" href="../../../volumina.view3d.html#volumina.view3d.slicingPlanesWidget.SlicingPlanesWidget.ShowPlaneWidget">[docs]</a>    <span class="k">def</span> <span class="nf">ShowPlaneWidget</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">axis</span><span class="p">,</span> <span class="n">show</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">planes</span><span class="p">[</span><span class="n">axis</span><span class="p">]</span><span class="o">.</span><span class="n">SetEnabled</span><span class="p">(</span><span class="n">show</span><span class="p">)</span>
+    </div>
+<div class="viewcode-block" id="SlicingPlanesWidget.TogglePlaneWidget"><a class="viewcode-back" href="../../../volumina.view3d.html#volumina.view3d.slicingPlanesWidget.SlicingPlanesWidget.TogglePlaneWidget">[docs]</a>    <span class="k">def</span> <span class="nf">TogglePlaneWidget</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">axis</span><span class="p">):</span>
+        <span class="n">show</span> <span class="o">=</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">planes</span><span class="p">[</span><span class="n">axis</span><span class="p">]</span><span class="o">.</span><span class="n">GetEnabled</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">planes</span><span class="p">[</span><span class="n">axis</span><span class="p">]</span><span class="o">.</span><span class="n">SetEnabled</span><span class="p">(</span><span class="n">show</span><span class="p">)</span>
+    </div>
+<div class="viewcode-block" id="SlicingPlanesWidget.togglePlanesOn"><a class="viewcode-back" href="../../../volumina.view3d.html#volumina.view3d.slicingPlanesWidget.SlicingPlanesWidget.togglePlanesOn">[docs]</a>    <span class="k">def</span> <span class="nf">togglePlanesOn</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">planes</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">On</span><span class="p">()</span>
+    </div>
+<div class="viewcode-block" id="SlicingPlanesWidget.GetCoordinate"><a class="viewcode-back" href="../../../volumina.view3d.html#volumina.view3d.slicingPlanesWidget.SlicingPlanesWidget.GetCoordinate">[docs]</a>    <span class="k">def</span> <span class="nf">GetCoordinate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinate</span>
+        </div>
+<div class="viewcode-block" id="SlicingPlanesWidget.SetCoordinate"><a class="viewcode-back" href="../../../volumina.view3d.html#volumina.view3d.slicingPlanesWidget.SlicingPlanesWidget.SetCoordinate">[docs]</a>    <span class="k">def</span> <span class="nf">SetCoordinate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coor</span><span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">coordinate</span> <span class="o">=</span> <span class="n">coor</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">planes</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">GetRepresentation</span><span class="p">()</span><span class="o">.</span><span class="n">SetOrigin</span><span class="p">(</span><span class="n">coor</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">coor</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">coor</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__UpdateCross</span><span class="p">()</span>
+    </div>
+    <span class="k">def</span> <span class="nf">__UpdateCross</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cross</span><span class="o">.</span><span class="n">GetPoints</span><span class="p">()</span>
+        <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinate</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinate</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinate</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">X</span><span class="p">,</span><span class="n">Y</span><span class="p">,</span><span class="n">Z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataShape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataShape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataShape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> 
+        <span class="n">p</span><span class="o">.</span><span class="n">SetPoint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span>  <span class="mi">0</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">)</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">SetPoint</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span>  <span class="n">X</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">)</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">SetPoint</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span>  <span class="n">x</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="n">z</span><span class="p">)</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">SetPoint</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span>  <span class="n">x</span><span class="p">,</span><span class="n">Y</span><span class="p">,</span><span class="n">z</span><span class="p">)</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">SetPoint</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span>  <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">SetPoint</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span>  <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">Z</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cross</span><span class="o">.</span><span class="n">Modified</span><span class="p">()</span>
+    
+    <span class="k">def</span> <span class="nf">__PlanePositionCallback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+        <span class="n">newCoordinate</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">planes</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">GetRepresentation</span><span class="p">()</span><span class="o">.</span><span class="n">GetOrigin</span><span class="p">()[</span><span class="n">i</span><span class="p">])</span> \
+                         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">)]</span>
+        <span class="n">axis</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+            
+            <span class="k">if</span> <span class="n">newCoordinate</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinate</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span> <span class="n">axis</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span> <span class="k">break</span>
+        <span class="k">if</span> <span class="n">axis</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span> <span class="k">return</span>
+        <span class="k">if</span> <span class="n">newCoordinate</span><span class="p">[</span><span class="n">axis</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataShape</span><span class="p">[</span><span class="n">axis</span><span class="p">]:</span> <span class="n">newCoordinate</span><span class="p">[</span><span class="n">axis</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataShape</span><span class="p">[</span><span class="n">axis</span><span class="p">]</span><span class="o">-</span><span class="mi">1</span>
+                         
+        <span class="bp">self</span><span class="o">.</span><span class="n">__UpdateCross</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lastChangedAxis</span> <span class="o">=</span> <span class="n">axis</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">coordinate</span> <span class="o">=</span> <span class="n">newCoordinate</span>
+        <span class="c">#print &quot;__PlanePositionCallback: setting coordinate to&quot;, self.coordinate</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">InvokeEvent</span><span class="p">(</span><span class="s">&quot;CoordinatesEvent&quot;</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Bernhard X. Kausler, Thorben Kröger, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,334 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>volumina.volumeEditor &mdash; volumina 0.6.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../static/jquery.js"></script>
+    <script type="text/javascript" src="../../static/underscore.js"></script>
+    <script type="text/javascript" src="../../static/doctools.js"></script>
+    <link rel="top" title="volumina 0.6.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for volumina.volumeEditor</h1><div class="highlight"><pre>
+<span class="c">#Python</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+
+<span class="c">#SciPy</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+
+<span class="c">#PyQt</span>
+<span class="kn">from</span> <span class="nn">PyQt4.QtCore</span> <span class="kn">import</span> <span class="n">pyqtSignal</span><span class="p">,</span> <span class="n">QObject</span>
+<span class="kn">from</span> <span class="nn">PyQt4.QtGui</span> <span class="kn">import</span> <span class="n">QApplication</span><span class="p">,</span> <span class="n">QWidget</span>
+
+<span class="c">#volumina</span>
+<span class="kn">import</span> <span class="nn">volumina.pixelpipeline.imagepump</span>
+<span class="kn">from</span> <span class="nn">eventswitch</span> <span class="kn">import</span> <span class="n">EventSwitch</span>
+<span class="kn">from</span> <span class="nn">imageScene2D</span> <span class="kn">import</span> <span class="n">ImageScene2D</span>
+<span class="kn">from</span> <span class="nn">imageView2D</span> <span class="kn">import</span> <span class="n">ImageView2D</span>
+<span class="kn">from</span> <span class="nn">positionModel</span> <span class="kn">import</span> <span class="n">PositionModel</span>
+<span class="kn">from</span> <span class="nn">navigationControler</span> <span class="kn">import</span> <span class="n">NavigationControler</span><span class="p">,</span> <span class="n">NavigationInterpreter</span>
+<span class="kn">from</span> <span class="nn">brushingcontroler</span> <span class="kn">import</span> <span class="n">BrushingInterpreter</span><span class="p">,</span> <span class="n">BrushingControler</span><span class="p">,</span> \
+                              <span class="n">CrosshairControler</span>
+<span class="kn">from</span> <span class="nn">brushingmodel</span> <span class="kn">import</span> <span class="n">BrushingModel</span>
+<span class="kn">from</span> <span class="nn">slicingtools</span> <span class="kn">import</span> <span class="n">SliceProjection</span>
+
+<span class="n">useVTK</span> <span class="o">=</span> <span class="bp">True</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">view3d.view3d</span> <span class="kn">import</span> <span class="n">OverviewScene</span>
+<span class="k">except</span><span class="p">:</span>
+    <span class="k">print</span> <span class="s">&quot;Warning: could not import optional dependency VTK&quot;</span>
+    <span class="n">useVTK</span> <span class="o">=</span> <span class="bp">False</span>
+
+<span class="c">#*******************************************************************************</span>
+<span class="c"># V o l u m e E d i t o r                                                      *</span>
+<span class="c">#*******************************************************************************</span>
+
+<div class="viewcode-block" id="VolumeEditor"><a class="viewcode-back" href="../../volumina.html#volumina.volumeEditor.VolumeEditor">[docs]</a><span class="k">class</span> <span class="nc">VolumeEditor</span><span class="p">(</span> <span class="n">QObject</span> <span class="p">):</span>
+    <span class="n">newImageView2DFocus</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">()</span>
+    <span class="n">shapeChanged</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">()</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">showDebugPatches</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_showDebugPatches</span>
+    <span class="nd">@showDebugPatches.setter</span>
+<div class="viewcode-block" id="VolumeEditor.showDebugPatches"><a class="viewcode-back" href="../../volumina.html#volumina.volumeEditor.VolumeEditor.showDebugPatches">[docs]</a>    <span class="k">def</span> <span class="nf">showDebugPatches</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">show</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">imageScenes</span><span class="p">:</span>
+            <span class="n">s</span><span class="o">.</span><span class="n">showTileOutlines</span> <span class="o">=</span> <span class="n">show</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_showDebugPatches</span> <span class="o">=</span> <span class="n">show</span>
+</div>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">showTileProgress</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_showTileProgress</span>
+    <span class="nd">@showDebugPatches.setter</span>
+<div class="viewcode-block" id="VolumeEditor.showTileProgress"><a class="viewcode-back" href="../../volumina.html#volumina.volumeEditor.VolumeEditor.showTileProgress">[docs]</a>    <span class="k">def</span> <span class="nf">showTileProgress</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">show</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">imageScenes</span><span class="p">:</span>
+            <span class="n">s</span><span class="o">.</span><span class="n">showTileProgress</span> <span class="o">=</span> <span class="n">show</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_showTileProgress</span> <span class="o">=</span> <span class="n">show</span>
+</div>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">cacheSize</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cacheSize</span>
+    <span class="nd">@cacheSize.setter</span>
+<div class="viewcode-block" id="VolumeEditor.cacheSize"><a class="viewcode-back" href="../../volumina.html#volumina.volumeEditor.VolumeEditor.cacheSize">[docs]</a>    <span class="k">def</span> <span class="nf">cacheSize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cache_size</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cacheSize</span> <span class="o">=</span> <span class="n">cache_size</span>
+        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">imageScenes</span><span class="p">:</span>
+            <span class="n">s</span><span class="o">.</span><span class="n">setCacheSize</span><span class="p">(</span><span class="n">cache_size</span><span class="p">)</span>
+</div>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">navigationInterpreterType</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">navInterpret</span><span class="p">)</span>
+    <span class="nd">@navigationInterpreterType.setter</span>
+<div class="viewcode-block" id="VolumeEditor.navigationInterpreterType"><a class="viewcode-back" href="../../volumina.html#volumina.volumeEditor.VolumeEditor.navigationInterpreterType">[docs]</a>    <span class="k">def</span> <span class="nf">navigationInterpreterType</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">navInt</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">navInterpret</span> <span class="o">=</span> <span class="n">navInt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">navCtrl</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eventSwitch</span><span class="o">.</span><span class="n">interpreter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">navInterpret</span>
+</div>
+<div class="viewcode-block" id="VolumeEditor.setNavigationInterpreter"><a class="viewcode-back" href="../../volumina.html#volumina.volumeEditor.VolumeEditor.setNavigationInterpreter">[docs]</a>    <span class="k">def</span> <span class="nf">setNavigationInterpreter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">navInterpret</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">navInterpret</span> <span class="o">=</span> <span class="n">navInterpret</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eventSwitch</span><span class="o">.</span><span class="n">interpreter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">navInterpret</span>
+</div>
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="VolumeEditor.syncAlongAxes"><a class="viewcode-back" href="../../volumina.html#volumina.volumeEditor.VolumeEditor.syncAlongAxes">[docs]</a>    <span class="k">def</span> <span class="nf">syncAlongAxes</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Axes orthogonal to slices, whose values are synced between layers.</span>
+
+<span class="sd">        Returns: a tuple of up to three values, encoding:</span>
+<span class="sd">                 0 - time</span>
+<span class="sd">                 1 - space</span>
+<span class="sd">                 2 - channel</span>
+
+<span class="sd">                 for example the meaning of (0,1) is: time and orthogonal space axes</span>
+<span class="sd">                 are synced for all layers, channel is not. (For the x-y slice, the space</span>
+<span class="sd">                 axis would be z and so on.)</span>
+<span class="sd"> </span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_sync_along</span><span class="p">)</span>
+</div>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">dataShape</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">posModel</span><span class="o">.</span><span class="n">shape5D</span>
+    <span class="nd">@dataShape.setter</span>
+<div class="viewcode-block" id="VolumeEditor.dataShape"><a class="viewcode-back" href="../../volumina.html#volumina.volumeEditor.VolumeEditor.dataShape">[docs]</a>    <span class="k">def</span> <span class="nf">dataShape</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">s</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">posModel</span><span class="o">.</span><span class="n">shape5D</span> <span class="o">=</span> <span class="n">s</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">imageViews</span><span class="p">):</span>
+            <span class="n">v</span><span class="o">.</span><span class="n">sliceShape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">posModel</span><span class="o">.</span><span class="n">sliceShape</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="n">i</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">view3d</span><span class="o">.</span><span class="n">dataShape</span> <span class="o">=</span> <span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">4</span><span class="p">]</span>
+      
+        <span class="c">#for 2D images, disable the slice intersection marker</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">4</span><span class="p">])</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> 
+        <span class="bp">self</span><span class="o">.</span><span class="n">navCtrl</span><span class="o">.</span><span class="n">indicateSliceIntersection</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">shapeChanged</span><span class="o">.</span><span class="n">emit</span><span class="p">()</span>
+        </div>
+<div class="viewcode-block" id="VolumeEditor.lastImageViewFocus"><a class="viewcode-back" href="../../volumina.html#volumina.volumeEditor.VolumeEditor.lastImageViewFocus">[docs]</a>    <span class="k">def</span> <span class="nf">lastImageViewFocus</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">axis</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lastImageViewFocus</span> <span class="o">=</span> <span class="n">axis</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">newImageView2DFocus</span><span class="o">.</span><span class="n">emit</span><span class="p">()</span>
+</div>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">layerStackModel</span><span class="p">,</span> <span class="n">labelsink</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">crosshair</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">syncAlongAxes</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">)):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">VolumeEditor</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="n">parent</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sync_along</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">syncAlongAxes</span><span class="p">)</span>
+
+        <span class="c">##</span>
+        <span class="c">## properties</span>
+        <span class="c">##</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_showDebugPatches</span>   <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_showTileProgress</span>   <span class="o">=</span> <span class="bp">True</span>
+
+        <span class="c">##</span>
+        <span class="c">## base components</span>
+        <span class="c">##</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layerStack</span> <span class="o">=</span> <span class="n">layerStackModel</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">posModel</span> <span class="o">=</span> <span class="n">PositionModel</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">brushingModel</span> <span class="o">=</span> <span class="n">BrushingModel</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">imageScenes</span> <span class="o">=</span> <span class="p">[</span><span class="n">ImageScene2D</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">posModel</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">4</span><span class="p">),</span> <span class="n">swapped_default</span><span class="o">=</span><span class="bp">True</span><span class="p">),</span>
+                            <span class="n">ImageScene2D</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">posModel</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">4</span><span class="p">)),</span>
+                            <span class="n">ImageScene2D</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">posModel</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">))]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">imageViews</span> <span class="o">=</span> <span class="p">[</span><span class="n">ImageView2D</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">imageScenes</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">]]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">imageViews</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">focusChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span> <span class="n">arg</span><span class="o">=</span><span class="mi">0</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">lastImageViewFocus</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">imageViews</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">focusChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span> <span class="n">arg</span><span class="o">=</span><span class="mi">1</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">lastImageViewFocus</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">imageViews</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">focusChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span> <span class="n">arg</span><span class="o">=</span><span class="mi">2</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">lastImageViewFocus</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lastImageViewFocus</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">crosshair</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">view</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">imageViews</span><span class="p">:</span>
+                <span class="n">view</span><span class="o">.</span><span class="n">_crossHairCursor</span><span class="o">.</span><span class="n">enabled</span> <span class="o">=</span> <span class="bp">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">imagepumps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initImagePumps</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">view3d</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initView3d</span><span class="p">()</span> <span class="k">if</span> <span class="n">useVTK</span> <span class="k">else</span> <span class="n">QWidget</span><span class="p">()</span>
+
+        <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;x&#39;</span><span class="p">,</span> <span class="s">&#39;y&#39;</span><span class="p">,</span> <span class="s">&#39;z&#39;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">scene</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">pump</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">imageScenes</span><span class="p">,</span> <span class="n">names</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">imagepumps</span><span class="p">):</span>
+            <span class="n">scene</span><span class="o">.</span><span class="n">setObjectName</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+            <span class="n">scene</span><span class="o">.</span><span class="n">stackedImageSources</span> <span class="o">=</span> <span class="n">pump</span><span class="o">.</span><span class="n">stackedImageSources</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">cacheSize</span> <span class="o">=</span> <span class="mi">50</span>
+
+        <span class="c">##</span>
+        <span class="c">## interaction</span>
+        <span class="c">##</span>
+        <span class="c"># event switch</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eventSwitch</span> <span class="o">=</span> <span class="n">EventSwitch</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">imageViews</span><span class="p">)</span>
+
+        <span class="c"># navigation control</span>
+        <span class="n">v3d</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">view3d</span> <span class="k">if</span> <span class="n">useVTK</span> <span class="k">else</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">navCtrl</span>      <span class="o">=</span> <span class="n">NavigationControler</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">imageViews</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">imagepumps</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">posModel</span><span class="p">,</span> <span class="n">view3d</span><span class="o">=</span><span class="n">v3d</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">navInterpret</span> <span class="o">=</span> <span class="n">NavigationInterpreter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">navCtrl</span><span class="p">)</span>
+
+        <span class="c"># brushing control</span>
+        <span class="k">if</span> <span class="n">crosshair</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">crosshairControler</span> <span class="o">=</span> <span class="n">CrosshairControler</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">brushingModel</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">imageViews</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">brushingControler</span> <span class="o">=</span> <span class="n">BrushingControler</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">brushingModel</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">posModel</span><span class="p">,</span> <span class="n">labelsink</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">brushingInterpreter</span> <span class="o">=</span> <span class="n">BrushingInterpreter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">navCtrl</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">brushingControler</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">imageViews</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">brushingControler</span><span class="o">.</span><span class="n">_brushingModel</span><span class="o">.</span><span class="n">brushSizeChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">_sliceIntersectionMarker</span><span class="o">.</span><span class="n">_set_diameter</span><span class="p">)</span>
+
+        <span class="c"># initial interaction mode</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eventSwitch</span><span class="o">.</span><span class="n">interpreter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">navInterpret</span>
+
+        <span class="c">##</span>
+        <span class="c">## connect</span>
+        <span class="c">##</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">posModel</span><span class="o">.</span><span class="n">timeChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">navCtrl</span><span class="o">.</span><span class="n">changeTime</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">posModel</span><span class="o">.</span><span class="n">slicingPositionChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">navCtrl</span><span class="o">.</span><span class="n">moveSlicingPosition</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">crosshair</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">posModel</span><span class="o">.</span><span class="n">cursorPositionChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">navCtrl</span><span class="o">.</span><span class="n">moveCrosshair</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">posModel</span><span class="o">.</span><span class="n">slicingPositionSettled</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">navCtrl</span><span class="o">.</span><span class="n">settleSlicingPosition</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">layerStack</span><span class="o">.</span><span class="n">layerAdded</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_onLayerAdded</span> <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">imageScenes</span><span class="p">:</span>
+            <span class="n">s</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+
+<div class="viewcode-block" id="VolumeEditor.scheduleSlicesRedraw"><a class="viewcode-back" href="../../volumina.html#volumina.volumeEditor.VolumeEditor.scheduleSlicesRedraw">[docs]</a>    <span class="k">def</span> <span class="nf">scheduleSlicesRedraw</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">imageScenes</span><span class="p">:</span>
+            <span class="n">s</span><span class="o">.</span><span class="n">_invalidateRect</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="VolumeEditor.setInteractionMode"><a class="viewcode-back" href="../../volumina.html#volumina.volumeEditor.VolumeEditor.setInteractionMode">[docs]</a>    <span class="k">def</span> <span class="nf">setInteractionMode</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="n">modes</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;navigation&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">navInterpret</span><span class="p">,</span> <span class="s">&#39;brushing&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">brushingInterpreter</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eventSwitch</span><span class="o">.</span><span class="n">interpreter</span> <span class="o">=</span> <span class="n">modes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="VolumeEditor.cleanUp"><a class="viewcode-back" href="../../volumina.html#volumina.volumeEditor.VolumeEditor.cleanUp">[docs]</a>    <span class="k">def</span> <span class="nf">cleanUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">QApplication</span><span class="o">.</span><span class="n">processEvents</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">scene</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_imageViews</span><span class="p">:</span>
+            <span class="n">scene</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="n">scene</span><span class="o">.</span><span class="n">deleteLater</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_imageViews</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">QApplication</span><span class="o">.</span><span class="n">processEvents</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="VolumeEditor.closeEvent"><a class="viewcode-back" href="../../volumina.html#volumina.volumeEditor.VolumeEditor.closeEvent">[docs]</a>    <span class="k">def</span> <span class="nf">closeEvent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+        <span class="n">event</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="VolumeEditor.setLabelSink"><a class="viewcode-back" href="../../volumina.html#volumina.volumeEditor.VolumeEditor.setLabelSink">[docs]</a>    <span class="k">def</span> <span class="nf">setLabelSink</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">labelsink</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">brushingControler</span><span class="o">.</span><span class="n">setDataSink</span><span class="p">(</span><span class="n">labelsink</span><span class="p">)</span>
+
+    <span class="c">##</span>
+    <span class="c">## private</span>
+    <span class="c">##</span></div>
+    <span class="k">def</span> <span class="nf">_initImagePumps</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="n">alongTXC</span> <span class="o">=</span> <span class="n">SliceProjection</span><span class="p">(</span> <span class="n">abscissa</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">ordinate</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">along</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">4</span><span class="p">]</span> <span class="p">)</span>
+        <span class="n">alongTYC</span> <span class="o">=</span> <span class="n">SliceProjection</span><span class="p">(</span> <span class="n">abscissa</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">ordinate</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">along</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">4</span><span class="p">]</span> <span class="p">)</span>
+        <span class="n">alongTZC</span> <span class="o">=</span> <span class="n">SliceProjection</span><span class="p">(</span> <span class="n">abscissa</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">ordinate</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">along</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">]</span> <span class="p">)</span>
+
+        <span class="n">imagepumps</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">imagepumps</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">volumina</span><span class="o">.</span><span class="n">pixelpipeline</span><span class="o">.</span><span class="n">imagepump</span><span class="o">.</span><span class="n">ImagePump</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">layerStack</span><span class="p">,</span> <span class="n">alongTXC</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sync_along</span> <span class="p">))</span>
+        <span class="n">imagepumps</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">volumina</span><span class="o">.</span><span class="n">pixelpipeline</span><span class="o">.</span><span class="n">imagepump</span><span class="o">.</span><span class="n">ImagePump</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">layerStack</span><span class="p">,</span> <span class="n">alongTYC</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sync_along</span> <span class="p">))</span>
+        <span class="n">imagepumps</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">volumina</span><span class="o">.</span><span class="n">pixelpipeline</span><span class="o">.</span><span class="n">imagepump</span><span class="o">.</span><span class="n">ImagePump</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">layerStack</span><span class="p">,</span> <span class="n">alongTZC</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sync_along</span> <span class="p">))</span>
+        <span class="k">return</span> <span class="n">imagepumps</span>
+
+    <span class="k">def</span> <span class="nf">_initView3d</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="n">view3d</span> <span class="o">=</span> <span class="n">OverviewScene</span><span class="p">()</span>
+        <span class="k">def</span> <span class="nf">onSliceDragged</span><span class="p">(</span><span class="n">num</span><span class="p">,</span> <span class="n">pos</span><span class="p">):</span>
+            <span class="n">newPos</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">posModel</span><span class="o">.</span><span class="n">slicingPos</span><span class="p">)</span>
+            <span class="n">newPos</span><span class="p">[</span><span class="n">pos</span><span class="p">]</span> <span class="o">=</span> <span class="n">num</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">posModel</span><span class="o">.</span><span class="n">slicingPos</span> <span class="o">=</span> <span class="n">newPos</span>
+        <span class="n">view3d</span><span class="o">.</span><span class="n">changedSlice</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">onSliceDragged</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">view3d</span>
+
+    <span class="k">def</span> <span class="nf">_onLayerAdded</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">layer</span><span class="p">,</span> <span class="n">row</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">navCtrl</span><span class="o">.</span><span class="n">layerChangeChannel</span><span class="p">(</span> <span class="n">layer</span><span class="p">)</span>
+        <span class="n">layer</span><span class="o">.</span><span class="n">channelChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">navCtrl</span><span class="o">.</span><span class="n">layerChangeChannel</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="n">layer</span><span class="p">)</span> <span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Bernhard X. Kausler, Thorben Kröger, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

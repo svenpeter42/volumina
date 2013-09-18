@@ -1,0 +1,383 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>volumina.layerstack &mdash; volumina 0.6.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../static/jquery.js"></script>
+    <script type="text/javascript" src="../../static/underscore.js"></script>
+    <script type="text/javascript" src="../../static/doctools.js"></script>
+    <link rel="top" title="volumina 0.6.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for volumina.layerstack</h1><div class="highlight"><pre>
+<span class="kn">import</span> <span class="nn">functools</span>
+<span class="kn">from</span> <span class="nn">PyQt4.QtCore</span> <span class="kn">import</span> <span class="n">QAbstractListModel</span><span class="p">,</span> <span class="n">pyqtSignal</span><span class="p">,</span> <span class="n">QModelIndex</span><span class="p">,</span> <span class="n">Qt</span><span class="p">,</span> \
+                         <span class="n">QTimer</span><span class="p">,</span> <span class="n">pyqtSignature</span>
+<span class="kn">from</span> <span class="nn">PyQt4.QtGui</span> <span class="kn">import</span> <span class="n">QItemSelectionModel</span>
+
+<span class="kn">from</span> <span class="nn">volumina.layer</span> <span class="kn">import</span> <span class="n">Layer</span>
+
+
+
+<div class="viewcode-block" id="LayerStackModel"><a class="viewcode-back" href="../../volumina.html#volumina.layerstack.LayerStackModel">[docs]</a><span class="k">class</span> <span class="nc">LayerStackModel</span><span class="p">(</span><span class="n">QAbstractListModel</span><span class="p">):</span>
+    <span class="n">canMoveSelectedUp</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span><span class="s">&quot;bool&quot;</span><span class="p">)</span>
+    <span class="n">canMoveSelectedDown</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span><span class="s">&quot;bool&quot;</span><span class="p">)</span>
+    <span class="n">canDeleteSelected</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span><span class="s">&quot;bool&quot;</span><span class="p">)</span>
+    
+    <span class="n">orderChanged</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">()</span>
+    <span class="n">layerAdded</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span> <span class="n">Layer</span><span class="p">,</span> <span class="nb">int</span> <span class="p">)</span> <span class="c"># is now in row</span>
+    <span class="n">layerRemoved</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span> <span class="n">Layer</span><span class="p">,</span> <span class="nb">int</span> <span class="p">)</span> <span class="c"># was in row</span>
+    <span class="n">stackCleared</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">()</span>
+        
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="n">QAbstractListModel</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_layerStack</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">selectionModel</span> <span class="o">=</span> <span class="n">QItemSelectionModel</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">selectionModel</span><span class="o">.</span><span class="n">selectionChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">updateGUI</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">selectionModel</span><span class="o">.</span><span class="n">selectionChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_onSelectionChanged</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_movingRows</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="n">QTimer</span><span class="o">.</span><span class="n">singleShot</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">updateGUI</span><span class="p">)</span>
+        
+        <span class="k">def</span> <span class="nf">_handleRemovedLayer</span><span class="p">(</span><span class="n">layer</span><span class="p">):</span>
+            <span class="c"># Layerstacks *own* the layers they hold, and thus are </span>
+            <span class="c">#  responsible for cleaning them up when they are removed:</span>
+            <span class="n">layer</span><span class="o">.</span><span class="n">clean_up</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layerRemoved</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="n">_handleRemovedLayer</span> <span class="p">)</span>
+
+    <span class="c">####</span>
+    <span class="c">## High level API to manipulate the layerstack</span>
+    <span class="c">###</span>
+    
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">rowCount</span><span class="p">()</span>
+        
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;&lt;LayerStackModel: layerStack=&#39;</span><span class="si">%r</span><span class="s">&#39;&gt;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_layerStack</span><span class="p">,)</span>  
+    
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layerStack</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+    
+    <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layerStack</span><span class="o">.</span><span class="n">__iter__</span><span class="p">()</span>
+    
+<div class="viewcode-block" id="LayerStackModel.layerIndex"><a class="viewcode-back" href="../../volumina.html#volumina.layerstack.LayerStackModel.layerIndex">[docs]</a>    <span class="k">def</span> <span class="nf">layerIndex</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">layer</span><span class="p">):</span>
+        <span class="c">#note that the &#39;index&#39; function already has a different implementation</span>
+        <span class="c">#from Qt side</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layerStack</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">layer</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="LayerStackModel.findMatchingIndex"><a class="viewcode-back" href="../../volumina.html#volumina.layerstack.LayerStackModel.findMatchingIndex">[docs]</a>    <span class="k">def</span> <span class="nf">findMatchingIndex</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Call the given function with each layer and return the index of the first layer for which f is True.&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">layer</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_layerStack</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">func</span><span class="p">(</span><span class="n">layer</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">index</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;No matching layer in stack.&quot;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="LayerStackModel.append"><a class="viewcode-back" href="../../volumina.html#volumina.layerstack.LayerStackModel.append">[docs]</a>    <span class="k">def</span> <span class="nf">append</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+   </div>
+<div class="viewcode-block" id="LayerStackModel.clear"><a class="viewcode-back" href="../../volumina.html#volumina.layerstack.LayerStackModel.clear">[docs]</a>    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">removeRows</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stackCleared</span><span class="o">.</span><span class="n">emit</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="LayerStackModel.insert"><a class="viewcode-back" href="../../volumina.html#volumina.layerstack.LayerStackModel.insert">[docs]</a>    <span class="k">def</span> <span class="nf">insert</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Insert a layer into this layer stack, which *takes ownership* of the layer.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">Layer</span><span class="p">),</span> <span class="s">&quot;Only Layers can be added to a LayerStackModel&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">insertRow</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setData</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">index</span><span class="p">),</span> <span class="n">data</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">selectedRow</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">selectionModel</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">selectedRow</span><span class="p">()),</span> <span class="n">QItemSelectionModel</span><span class="o">.</span><span class="n">Deselect</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">selectionModel</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">index</span><span class="p">),</span> <span class="n">QItemSelectionModel</span><span class="o">.</span><span class="n">Select</span><span class="p">)</span>
+        
+        <span class="n">data</span><span class="o">.</span><span class="n">changed</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_onLayerChanged</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">index</span><span class="p">)))</span>
+        <span class="n">index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layerStack</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layerAdded</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">index</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">updateGUI</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="LayerStackModel.selectRow"><a class="viewcode-back" href="../../volumina.html#volumina.layerstack.LayerStackModel.selectRow">[docs]</a>    <span class="k">def</span> <span class="nf">selectRow</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">row</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">selectionModel</span><span class="o">.</span><span class="n">setCurrentIndex</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">row</span><span class="p">),</span> <span class="n">QItemSelectionModel</span><span class="o">.</span><span class="n">SelectCurrent</span><span class="p">)</span>
+</div>
+    <span class="nd">@pyqtSignature</span><span class="p">(</span><span class="s">&quot;deleteSelected()&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="LayerStackModel.deleteSelected"><a class="viewcode-back" href="../../volumina.html#volumina.layerstack.LayerStackModel.deleteSelected">[docs]</a>    <span class="k">def</span> <span class="nf">deleteSelected</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">num_rows</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">selectionModel</span><span class="o">.</span><span class="n">selectedRows</span><span class="p">())</span>
+        <span class="k">assert</span> <span class="n">num_rows</span> <span class="o">==</span> <span class="mi">1</span><span class="p">,</span> <span class="s">&quot;Can&#39;t delete selected row: {} layers are currently selected.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="n">num_rows</span> <span class="p">)</span>
+        <span class="n">row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selectionModel</span><span class="o">.</span><span class="n">selectedRows</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layerStack</span><span class="p">[</span><span class="n">row</span><span class="o">.</span><span class="n">row</span><span class="p">()]</span>
+        <span class="k">assert</span> <span class="ow">not</span> <span class="n">layer</span><span class="o">.</span><span class="n">_cleaned_up</span><span class="p">,</span> <span class="s">&quot;This layer ({}) has already been cleaned up.  Shouldn&#39;t it already be removed from the layerstack?&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="n">layer</span><span class="o">.</span><span class="n">name</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">removeRow</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">row</span><span class="p">())</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rowCount</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">selectionModel</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">QItemSelectionModel</span><span class="o">.</span><span class="n">Select</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layerRemoved</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span> <span class="n">layer</span><span class="p">,</span> <span class="n">row</span><span class="o">.</span><span class="n">row</span><span class="p">()</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">updateGUI</span><span class="p">()</span>
+        </div>
+    <span class="nd">@pyqtSignature</span><span class="p">(</span><span class="s">&quot;moveSelectedUp()&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="LayerStackModel.moveSelectedUp"><a class="viewcode-back" href="../../volumina.html#volumina.layerstack.LayerStackModel.moveSelectedUp">[docs]</a>    <span class="k">def</span> <span class="nf">moveSelectedUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">selectionModel</span><span class="o">.</span><span class="n">selectedRows</span><span class="p">())</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="n">row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selectionModel</span><span class="o">.</span><span class="n">selectedRows</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">row</span><span class="o">.</span><span class="n">row</span><span class="p">()</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">oldRow</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">row</span><span class="p">()</span>
+            <span class="n">newRow</span> <span class="o">=</span> <span class="n">oldRow</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_moveToRow</span><span class="p">(</span><span class="n">oldRow</span><span class="p">,</span> <span class="n">newRow</span><span class="p">)</span>
+    
+</div>
+    <span class="nd">@pyqtSignature</span><span class="p">(</span><span class="s">&quot;moveSelectedDown()&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="LayerStackModel.moveSelectedDown"><a class="viewcode-back" href="../../volumina.html#volumina.layerstack.LayerStackModel.moveSelectedDown">[docs]</a>    <span class="k">def</span> <span class="nf">moveSelectedDown</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">selectionModel</span><span class="o">.</span><span class="n">selectedRows</span><span class="p">())</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="n">row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selectionModel</span><span class="o">.</span><span class="n">selectedRows</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">row</span><span class="o">.</span><span class="n">row</span><span class="p">()</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rowCount</span><span class="p">()</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">oldRow</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">row</span><span class="p">()</span>
+            <span class="n">newRow</span> <span class="o">=</span> <span class="n">oldRow</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_moveToRow</span><span class="p">(</span><span class="n">oldRow</span><span class="p">,</span> <span class="n">newRow</span><span class="p">)</span>
+            </div>
+    <span class="nd">@pyqtSignature</span><span class="p">(</span><span class="s">&quot;moveSelectedToTop()&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="LayerStackModel.moveSelectedToTop"><a class="viewcode-back" href="../../volumina.html#volumina.layerstack.LayerStackModel.moveSelectedToTop">[docs]</a>    <span class="k">def</span> <span class="nf">moveSelectedToTop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">selectionModel</span><span class="o">.</span><span class="n">selectedRows</span><span class="p">())</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="n">row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selectionModel</span><span class="o">.</span><span class="n">selectedRows</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">row</span><span class="o">.</span><span class="n">row</span><span class="p">()</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">oldRow</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">row</span><span class="p">()</span>
+            <span class="n">newRow</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_moveToRow</span><span class="p">(</span><span class="n">oldRow</span><span class="p">,</span> <span class="n">newRow</span><span class="p">)</span>
+    </div>
+    <span class="nd">@pyqtSignature</span><span class="p">(</span><span class="s">&quot;moveSelectedToBottom()&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="LayerStackModel.moveSelectedToBottom"><a class="viewcode-back" href="../../volumina.html#volumina.layerstack.LayerStackModel.moveSelectedToBottom">[docs]</a>    <span class="k">def</span> <span class="nf">moveSelectedToBottom</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">selectionModel</span><span class="o">.</span><span class="n">selectedRows</span><span class="p">())</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="n">row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selectionModel</span><span class="o">.</span><span class="n">selectedRows</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">row</span><span class="o">.</span><span class="n">row</span><span class="p">()</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rowCount</span><span class="p">()</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">oldRow</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">row</span><span class="p">()</span>
+            <span class="n">newRow</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rowCount</span><span class="p">()</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_moveToRow</span><span class="p">(</span><span class="n">oldRow</span><span class="p">,</span> <span class="n">newRow</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="LayerStackModel.moveSelectedToRow"><a class="viewcode-back" href="../../volumina.html#volumina.layerstack.LayerStackModel.moveSelectedToRow">[docs]</a>    <span class="k">def</span> <span class="nf">moveSelectedToRow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">newRow</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">selectionModel</span><span class="o">.</span><span class="n">selectedRows</span><span class="p">())</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="n">row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selectionModel</span><span class="o">.</span><span class="n">selectedRows</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">row</span><span class="o">.</span><span class="n">row</span><span class="p">()</span> <span class="o">!=</span> <span class="n">newRow</span><span class="p">:</span>
+            <span class="n">oldRow</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">row</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_moveToRow</span><span class="p">(</span><span class="n">oldRow</span><span class="p">,</span> <span class="n">newRow</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">_moveToRow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">oldRow</span><span class="p">,</span> <span class="n">newRow</span><span class="p">):</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layerStack</span><span class="p">[</span><span class="n">oldRow</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">removeRow</span><span class="p">(</span><span class="n">oldRow</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">insertRow</span><span class="p">(</span><span class="n">newRow</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setData</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">newRow</span><span class="p">),</span> <span class="n">d</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">selectionModel</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">newRow</span><span class="p">),</span> <span class="n">QItemSelectionModel</span><span class="o">.</span><span class="n">Select</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">orderChanged</span><span class="o">.</span><span class="n">emit</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">updateGUI</span><span class="p">()</span>
+    <span class="c">####</span>
+    <span class="c">## Low level API. To add, remove etc. layers use the high level API from above.</span>
+    <span class="c">####</span>
+ 
+<div class="viewcode-block" id="LayerStackModel.updateGUI"><a class="viewcode-back" href="../../volumina.html#volumina.layerstack.LayerStackModel.updateGUI">[docs]</a>    <span class="k">def</span> <span class="nf">updateGUI</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canMoveSelectedUp</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">selectedRow</span><span class="p">()</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canMoveSelectedDown</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">selectedRow</span><span class="p">()</span><span class="o">&lt;</span><span class="bp">self</span><span class="o">.</span><span class="n">rowCount</span><span class="p">()</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canDeleteSelected</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rowCount</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">wantsUpdate</span><span class="p">()</span>
+        </div>
+<div class="viewcode-block" id="LayerStackModel.selectedRow"><a class="viewcode-back" href="../../volumina.html#volumina.layerstack.LayerStackModel.selectedRow">[docs]</a>    <span class="k">def</span> <span class="nf">selectedRow</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">selected</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selectionModel</span><span class="o">.</span><span class="n">selectedRows</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">selected</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">selected</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">row</span><span class="p">()</span>
+        <span class="k">return</span> <span class="o">-</span><span class="mi">1</span>
+    </div>
+<div class="viewcode-block" id="LayerStackModel.selectedIndex"><a class="viewcode-back" href="../../volumina.html#volumina.layerstack.LayerStackModel.selectedIndex">[docs]</a>    <span class="k">def</span> <span class="nf">selectedIndex</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selectedRow</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">row</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">selectedRow</span><span class="p">())</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">QModelIndex</span><span class="p">()</span>
+    </div>
+<div class="viewcode-block" id="LayerStackModel.rowCount"><a class="viewcode-back" href="../../volumina.html#volumina.layerstack.LayerStackModel.rowCount">[docs]</a>    <span class="k">def</span> <span class="nf">rowCount</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span> <span class="o">=</span> <span class="n">QModelIndex</span><span class="p">()):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">parent</span><span class="o">.</span><span class="n">isValid</span><span class="p">():</span>
+            <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_layerStack</span><span class="p">)</span>
+        <span class="k">return</span> <span class="mi">0</span>
+    </div>
+<div class="viewcode-block" id="LayerStackModel.insertRows"><a class="viewcode-back" href="../../volumina.html#volumina.layerstack.LayerStackModel.insertRows">[docs]</a>    <span class="k">def</span> <span class="nf">insertRows</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row</span><span class="p">,</span> <span class="n">count</span><span class="p">,</span> <span class="n">parent</span> <span class="o">=</span> <span class="n">QModelIndex</span><span class="p">()):</span>
+        <span class="sd">&#39;&#39;&#39;Insert empty rows in the stack. </span>
+<span class="sd">        </span>
+<span class="sd">        DO NOT USE THIS METHOD TO INSERT NEW LAYERS!</span>
+<span class="sd">        Always use the insert() or append() method.</span>
+<span class="sd">        </span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="n">parent</span><span class="o">.</span><span class="n">isValid</span><span class="p">():</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="n">oldRowCount</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rowCount</span><span class="p">()</span>
+        <span class="c">#for some reason, row can be negative!</span>
+        <span class="n">beginRow</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">row</span><span class="p">)</span>
+        <span class="n">endRow</span>   <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">beginRow</span><span class="o">+</span><span class="n">count</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_layerStack</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">beginInsertRows</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="n">beginRow</span><span class="p">,</span> <span class="n">endRow</span><span class="p">)</span> 
+        <span class="k">while</span><span class="p">(</span><span class="n">beginRow</span> <span class="o">&lt;=</span> <span class="n">endRow</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_layerStack</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">Layer</span><span class="p">(</span><span class="n">datasources</span><span class="o">=</span><span class="p">[]))</span>
+            <span class="n">beginRow</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">endInsertRows</span><span class="p">()</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">rowCount</span><span class="p">()</span> <span class="o">==</span> <span class="n">oldRowCount</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="s">&quot;oldRowCount = </span><span class="si">%d</span><span class="s">, self.rowCount() = </span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">oldRowCount</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rowCount</span><span class="p">())</span>
+        <span class="k">return</span> <span class="bp">True</span>
+            </div>
+<div class="viewcode-block" id="LayerStackModel.removeRows"><a class="viewcode-back" href="../../volumina.html#volumina.layerstack.LayerStackModel.removeRows">[docs]</a>    <span class="k">def</span> <span class="nf">removeRows</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row</span><span class="p">,</span> <span class="n">count</span><span class="p">,</span> <span class="n">parent</span> <span class="o">=</span> <span class="n">QModelIndex</span><span class="p">()):</span>
+        <span class="sd">&#39;&#39;&#39;Remove rows from the stack. </span>
+<span class="sd">        </span>
+<span class="sd">        DO NOT USE THIS METHOD TO REMOVE LAYERS!</span>
+<span class="sd">        Use the deleteSelected() method instead.</span>
+<span class="sd">        </span>
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="k">if</span> <span class="n">parent</span><span class="o">.</span><span class="n">isValid</span><span class="p">():</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">if</span> <span class="n">row</span><span class="o">+</span><span class="n">count</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">row</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_layerStack</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="n">oldRowCount</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rowCount</span><span class="p">()</span>
+        <span class="n">beginRow</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">row</span><span class="p">)</span>
+        <span class="n">endRow</span>   <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">row</span><span class="o">+</span><span class="n">count</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_layerStack</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">beginRemoveRows</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="n">beginRow</span><span class="p">,</span> <span class="n">endRow</span><span class="p">)</span>
+        <span class="k">while</span><span class="p">(</span><span class="n">beginRow</span> <span class="o">&lt;=</span> <span class="n">endRow</span><span class="p">):</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layerStack</span><span class="p">[</span><span class="n">row</span><span class="p">]</span>
+            <span class="n">beginRow</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">endRemoveRows</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">True</span>
+    </div>
+<div class="viewcode-block" id="LayerStackModel.flags"><a class="viewcode-back" href="../../volumina.html#volumina.layerstack.LayerStackModel.flags">[docs]</a>    <span class="k">def</span> <span class="nf">flags</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
+        <span class="n">defaultFlags</span> <span class="o">=</span> <span class="n">Qt</span><span class="o">.</span><span class="n">ItemIsSelectable</span> <span class="o">|</span> <span class="n">Qt</span><span class="o">.</span><span class="n">ItemIsEditable</span> <span class="o">|</span> <span class="n">Qt</span><span class="o">.</span><span class="n">ItemIsEnabled</span>
+        <span class="k">if</span> <span class="n">index</span><span class="o">.</span><span class="n">isValid</span><span class="p">():</span>
+            <span class="k">return</span> <span class="n">Qt</span><span class="o">.</span><span class="n">ItemIsDragEnabled</span> <span class="o">|</span> <span class="n">defaultFlags</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">Qt</span><span class="o">.</span><span class="n">ItemIsDropEnabled</span> <span class="o">|</span> <span class="n">defaultFlags</span>
+    </div>
+<div class="viewcode-block" id="LayerStackModel.supportedDropActions"><a class="viewcode-back" href="../../volumina.html#volumina.layerstack.LayerStackModel.supportedDropActions">[docs]</a>    <span class="k">def</span> <span class="nf">supportedDropActions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Qt</span><span class="o">.</span><span class="n">MoveAction</span>
+</div>
+<div class="viewcode-block" id="LayerStackModel.data"><a class="viewcode-back" href="../../volumina.html#volumina.layerstack.LayerStackModel.data">[docs]</a>    <span class="k">def</span> <span class="nf">data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">role</span> <span class="o">=</span> <span class="n">Qt</span><span class="o">.</span><span class="n">DisplayRole</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">index</span><span class="o">.</span><span class="n">isValid</span><span class="p">():</span>
+            <span class="k">return</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="n">index</span><span class="o">.</span><span class="n">row</span><span class="p">()</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_layerStack</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">None</span>
+        
+        <span class="k">if</span> <span class="n">role</span> <span class="o">==</span> <span class="n">Qt</span><span class="o">.</span><span class="n">DisplayRole</span> <span class="ow">or</span> <span class="n">role</span> <span class="o">==</span> <span class="n">Qt</span><span class="o">.</span><span class="n">EditRole</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layerStack</span><span class="p">[</span><span class="n">index</span><span class="o">.</span><span class="n">row</span><span class="p">()]</span>
+        <span class="k">elif</span> <span class="n">role</span> <span class="o">==</span> <span class="n">Qt</span><span class="o">.</span><span class="n">ToolTipRole</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layerStack</span><span class="p">[</span><span class="n">index</span><span class="o">.</span><span class="n">row</span><span class="p">()]</span><span class="o">.</span><span class="n">toolTip</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">None</span>
+    </div>
+<div class="viewcode-block" id="LayerStackModel.setData"><a class="viewcode-back" href="../../volumina.html#volumina.layerstack.LayerStackModel.setData">[docs]</a>    <span class="k">def</span> <span class="nf">setData</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">role</span> <span class="o">=</span> <span class="n">Qt</span><span class="o">.</span><span class="n">EditRole</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Replace one layer with another. </span>
+<span class="sd">        </span>
+<span class="sd">        DO NOT USE THIS METHOD TO INSERT NEW LAYERS!</span>
+<span class="sd">        Use deleteSelected() followed by insert() or append().</span>
+<span class="sd">        </span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="n">role</span> <span class="o">==</span> <span class="n">Qt</span><span class="o">.</span><span class="n">EditRole</span><span class="p">:</span>
+            <span class="n">layer</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">Layer</span><span class="p">):</span>
+                <span class="n">layer</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">toPyObject</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_layerStack</span><span class="p">[</span><span class="n">index</span><span class="o">.</span><span class="n">row</span><span class="p">()]</span> <span class="o">=</span> <span class="n">layer</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dataChanged</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">index</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">elif</span> <span class="n">role</span> <span class="o">==</span> <span class="n">Qt</span><span class="o">.</span><span class="n">ToolTipRole</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_layerStack</span><span class="p">[</span><span class="n">index</span><span class="o">.</span><span class="n">row</span><span class="p">()]</span><span class="o">.</span><span class="n">setToolTip</span><span class="p">()</span>
+            <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">return</span> <span class="bp">False</span>
+            
+    </div>
+<div class="viewcode-block" id="LayerStackModel.headerData"><a class="viewcode-back" href="../../volumina.html#volumina.layerstack.LayerStackModel.headerData">[docs]</a>    <span class="k">def</span> <span class="nf">headerData</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">section</span><span class="p">,</span> <span class="n">orientation</span><span class="p">,</span> <span class="n">role</span> <span class="o">=</span> <span class="n">Qt</span><span class="o">.</span><span class="n">DisplayRole</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">role</span> <span class="o">!=</span> <span class="n">Qt</span><span class="o">.</span><span class="n">DisplayRole</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="n">orientation</span> <span class="o">==</span> <span class="n">Qt</span><span class="o">.</span><span class="n">Horizontal</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;Column </span><span class="si">%r</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">section</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;Row </span><span class="si">%r</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">section</span>
+        </div>
+<div class="viewcode-block" id="LayerStackModel.wantsUpdate"><a class="viewcode-back" href="../../volumina.html#volumina.layerstack.LayerStackModel.wantsUpdate">[docs]</a>    <span class="k">def</span> <span class="nf">wantsUpdate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layoutChanged</span><span class="o">.</span><span class="n">emit</span><span class="p">()</span>
+</div>
+    <span class="k">def</span> <span class="nf">_onLayerChanged</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">idx</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dataChanged</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">idx</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">updateGUI</span><span class="p">()</span>
+        
+    <span class="k">def</span> <span class="nf">_onSelectionChanged</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">selected</span><span class="p">,</span> <span class="n">deselected</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">deselected</span><span class="o">.</span><span class="n">indexes</span><span class="p">():</span>
+            <span class="bp">self</span><span class="p">[</span><span class="n">idx</span><span class="o">.</span><span class="n">row</span><span class="p">()]</span><span class="o">.</span><span class="n">setActive</span><span class="p">(</span><span class="bp">False</span><span class="p">)</span> 
+        <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">selected</span><span class="o">.</span><span class="n">indexes</span><span class="p">():</span>
+            <span class="bp">self</span><span class="p">[</span><span class="n">idx</span><span class="o">.</span><span class="n">row</span><span class="p">()]</span><span class="o">.</span><span class="n">setActive</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span> </div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Bernhard X. Kausler, Thorben Kröger, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

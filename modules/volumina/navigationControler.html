@@ -1,0 +1,590 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>volumina.navigationControler &mdash; volumina 0.6.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../static/jquery.js"></script>
+    <script type="text/javascript" src="../../static/underscore.js"></script>
+    <script type="text/javascript" src="../../static/doctools.js"></script>
+    <link rel="top" title="volumina 0.6.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for volumina.navigationControler</h1><div class="highlight"><pre>
+<span class="kn">from</span> <span class="nn">PyQt4.QtCore</span> <span class="kn">import</span> <span class="n">QObject</span><span class="p">,</span> <span class="n">QTimer</span><span class="p">,</span> <span class="n">QEvent</span><span class="p">,</span> <span class="n">Qt</span><span class="p">,</span> <span class="n">QPointF</span><span class="p">,</span> <span class="n">pyqtSignal</span>
+<span class="kn">from</span> <span class="nn">PyQt4.QtGui</span>  <span class="kn">import</span> <span class="n">QColor</span><span class="p">,</span> <span class="n">QCursor</span> 
+
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+
+<span class="kn">from</span> <span class="nn">eventswitch</span> <span class="kn">import</span> <span class="n">InterpreterABC</span>
+
+<span class="kn">from</span> <span class="nn">volumina.sliceIntersectionMarker</span> <span class="kn">import</span> <span class="n">SliceIntersectionMarker</span>
+<span class="kn">from</span> <span class="nn">volumina.imageScene2D</span> <span class="kn">import</span> <span class="n">DirtyIndicator</span>
+<span class="kn">import</span> <span class="nn">volumina</span>
+
+<div class="viewcode-block" id="posView2D"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.posView2D">[docs]</a><span class="k">def</span> <span class="nf">posView2D</span><span class="p">(</span><span class="n">pos3d</span><span class="p">,</span> <span class="n">axis</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;convert from a 3D position to a 2D position on the slicing plane</span>
+<span class="sd">       perpendicular to axis&quot;&quot;&quot;</span>
+    <span class="n">pos2d</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">pos3d</span><span class="p">)</span>
+    <span class="k">del</span> <span class="n">pos2d</span><span class="p">[</span><span class="n">axis</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">pos2d</span>
+
+<span class="c">#*******************************************************************************</span>
+<span class="c"># N a v i g a t i o n I n t e r p r e t e r                                    *</span>
+<span class="c">#*******************************************************************************</span>
+</div>
+<div class="viewcode-block" id="NavigationInterpreter"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.NavigationInterpreter">[docs]</a><span class="k">class</span> <span class="nc">NavigationInterpreter</span><span class="p">(</span><span class="n">QObject</span><span class="p">):</span>
+    <span class="c"># states</span>
+    <span class="n">FINAL</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">DEFAULT_MODE</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">DRAG_MODE</span> <span class="o">=</span> <span class="mi">2</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="NavigationInterpreter.state"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.NavigationInterpreter.state">[docs]</a>    <span class="k">def</span> <span class="nf">state</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_state</span>
+</div>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">navigationcontroler</span><span class="p">):</span>
+        <span class="n">QObject</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_navCtrl</span> <span class="o">=</span> <span class="n">navigationcontroler</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">FINAL</span>
+
+<div class="viewcode-block" id="NavigationInterpreter.start"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.NavigationInterpreter.start">[docs]</a>    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_state</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">FINAL</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_current_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">DEFAULT_MODE</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">pass</span> <span class="c"># ignore</span>
+</div>
+<div class="viewcode-block" id="NavigationInterpreter.stop"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.NavigationInterpreter.stop">[docs]</a>    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">FINAL</span>
+</div>
+<div class="viewcode-block" id="NavigationInterpreter.eventFilter"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.NavigationInterpreter.eventFilter">[docs]</a>    <span class="k">def</span> <span class="nf">eventFilter</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">watched</span><span class="p">,</span> <span class="n">event</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_navCtrl</span><span class="o">.</span><span class="n">enableNavigation</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+
+        <span class="n">etype</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">type</span><span class="p">()</span>
+        <span class="c">### the following implements a simple state machine</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_state</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">DEFAULT_MODE</span><span class="p">:</span>
+            <span class="c">### default mode -&gt; drag mode</span>
+
+            <span class="k">if</span>    <span class="p">(</span><span class="n">etype</span> <span class="o">==</span> <span class="n">QEvent</span><span class="o">.</span><span class="n">MouseButtonPress</span> <span class="ow">and</span> <span class="n">event</span><span class="o">.</span><span class="n">button</span><span class="p">()</span> <span class="o">==</span> <span class="n">Qt</span><span class="o">.</span><span class="n">MidButton</span><span class="p">)</span> \
+               <span class="ow">or</span> <span class="p">(</span><span class="n">etype</span> <span class="o">==</span> <span class="n">QEvent</span><span class="o">.</span><span class="n">MouseButtonPress</span> <span class="ow">and</span> <span class="n">event</span><span class="o">.</span><span class="n">modifiers</span><span class="p">()</span> <span class="o">==</span> <span class="n">Qt</span><span class="o">.</span><span class="n">ShiftModifier</span><span class="p">):</span>
+                <span class="c"># self.onExit_default(): call it here, if needed</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_current_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">DRAG_MODE</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">onEntry_drag</span><span class="p">(</span> <span class="n">watched</span><span class="p">,</span> <span class="n">event</span> <span class="p">)</span>
+                <span class="n">event</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
+                <span class="k">return</span> <span class="bp">True</span>
+
+            <span class="c">### actions in default mode</span>
+            <span class="k">elif</span> <span class="n">etype</span> <span class="o">==</span> <span class="n">QEvent</span><span class="o">.</span><span class="n">MouseMove</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">onMouseMove_default</span><span class="p">(</span> <span class="n">watched</span><span class="p">,</span> <span class="n">event</span> <span class="p">)</span>
+
+            <span class="k">elif</span> <span class="n">etype</span> <span class="o">==</span> <span class="n">QEvent</span><span class="o">.</span><span class="n">Wheel</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">onWheel_default</span><span class="p">(</span> <span class="n">watched</span><span class="p">,</span> <span class="n">event</span> <span class="p">)</span>
+                <span class="n">event</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
+                <span class="k">return</span> <span class="bp">True</span>
+
+            <span class="k">elif</span> <span class="n">etype</span> <span class="o">==</span> <span class="n">QEvent</span><span class="o">.</span><span class="n">MouseButtonDblClick</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">onMouseDoubleClick_default</span><span class="p">(</span> <span class="n">watched</span><span class="p">,</span> <span class="n">event</span> <span class="p">)</span>
+
+            <span class="k">elif</span> <span class="n">etype</span> <span class="o">==</span> <span class="n">QEvent</span><span class="o">.</span><span class="n">MouseButtonPress</span> <span class="ow">and</span> <span class="n">event</span><span class="o">.</span><span class="n">button</span><span class="p">()</span> <span class="o">==</span> <span class="n">Qt</span><span class="o">.</span><span class="n">RightButton</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">onMousePressRight_default</span><span class="p">(</span> <span class="n">watched</span><span class="p">,</span> <span class="n">event</span> <span class="p">)</span>
+            
+            
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_state</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">DRAG_MODE</span><span class="p">:</span>
+            <span class="c">### drag mode -&gt; default mode</span>
+            <span class="k">if</span> <span class="n">etype</span> <span class="o">==</span> <span class="n">QEvent</span><span class="o">.</span><span class="n">MouseButtonRelease</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">onExit_drag</span><span class="p">(</span> <span class="n">watched</span><span class="p">,</span> <span class="n">event</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_current_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">DEFAULT_MODE</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">onEntry_default</span><span class="p">(</span> <span class="n">watched</span><span class="p">,</span> <span class="n">event</span> <span class="p">)</span>
+                <span class="n">event</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
+                <span class="k">return</span> <span class="bp">True</span>
+
+            <span class="c">### actions in drag mode</span>
+            <span class="k">elif</span> <span class="n">etype</span> <span class="o">==</span> <span class="n">QEvent</span><span class="o">.</span><span class="n">MouseMove</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">onMouseMove_drag</span><span class="p">(</span> <span class="n">watched</span><span class="p">,</span> <span class="n">event</span> <span class="p">)</span>
+                <span class="n">event</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
+                <span class="k">return</span> <span class="bp">True</span>
+
+        <span class="n">event</span><span class="o">.</span><span class="n">ignore</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">False</span>
+</div>
+<div class="viewcode-block" id="NavigationInterpreter.mousePositionValid"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.NavigationInterpreter.mousePositionValid">[docs]</a>    <span class="k">def</span> <span class="nf">mousePositionValid</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">imageview</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+        <span class="n">axis</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_navCtrl</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">activeView</span>
+        <span class="n">dataCoord2D</span> <span class="o">=</span> <span class="n">imageview</span><span class="o">.</span><span class="n">mapScene2Data</span><span class="p">(</span><span class="n">imageview</span><span class="o">.</span><span class="n">mapToScene</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">pos</span><span class="p">()))</span>
+        <span class="n">newPos</span> <span class="o">=</span> <span class="p">[</span><span class="n">dataCoord2D</span><span class="o">.</span><span class="n">x</span><span class="p">(),</span> <span class="n">dataCoord2D</span><span class="o">.</span><span class="n">y</span><span class="p">()]</span>
+        <span class="n">newPos</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">axis</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_navCtrl</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">slicingPos</span><span class="p">[</span><span class="n">axis</span><span class="p">])</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_navCtrl</span><span class="o">.</span><span class="n">_positionValid</span><span class="p">(</span><span class="n">newPos</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">return</span> <span class="bp">True</span>
+
+    <span class="c">###</span>
+    <span class="c">### Default Mode</span>
+    <span class="c">###</span></div>
+<div class="viewcode-block" id="NavigationInterpreter.onEntry_default"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.NavigationInterpreter.onEntry_default">[docs]</a>    <span class="k">def</span> <span class="nf">onEntry_default</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">imageview</span><span class="p">,</span> <span class="n">event</span> <span class="p">):</span>
+        <span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="NavigationInterpreter.onWheel_default"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.NavigationInterpreter.onWheel_default">[docs]</a>    <span class="k">def</span> <span class="nf">onWheel_default</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">imageview</span><span class="p">,</span> <span class="n">event</span> <span class="p">):</span>
+        <span class="n">navCtrl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_navCtrl</span>
+        <span class="n">k_alt</span> <span class="o">=</span> <span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">modifiers</span><span class="p">()</span> <span class="o">==</span> <span class="n">Qt</span><span class="o">.</span><span class="n">AltModifier</span><span class="p">)</span>
+        <span class="n">k_ctrl</span> <span class="o">=</span> <span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">modifiers</span><span class="p">()</span> <span class="o">==</span> <span class="n">Qt</span><span class="o">.</span><span class="n">ControlModifier</span><span class="p">)</span>
+        <span class="n">k_shift</span> <span class="o">=</span> <span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">modifiers</span><span class="p">()</span> <span class="o">==</span> <span class="n">Qt</span><span class="o">.</span><span class="n">ShiftModifier</span><span class="p">)</span>
+        <span class="n">k_shift_alt</span> <span class="o">=</span> <span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">modifiers</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="n">Qt</span><span class="o">.</span><span class="n">ShiftModifier</span> <span class="o">|</span> <span class="n">Qt</span><span class="o">.</span><span class="n">AltModifier</span><span class="p">))</span>
+        <span class="n">imageview</span><span class="o">.</span><span class="n">mousePos</span> <span class="o">=</span> <span class="n">imageview</span><span class="o">.</span><span class="n">mapScene2Data</span><span class="p">(</span><span class="n">imageview</span><span class="o">.</span><span class="n">mapToScene</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">pos</span><span class="p">()))</span>
+
+        <span class="n">sceneMousePos</span> <span class="o">=</span> <span class="n">imageview</span><span class="o">.</span><span class="n">mapToScene</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">pos</span><span class="p">())</span>
+        <span class="n">grviewCenter</span> <span class="o">=</span> <span class="n">imageview</span><span class="o">.</span><span class="n">mapToScene</span><span class="p">(</span><span class="n">imageview</span><span class="o">.</span><span class="n">viewport</span><span class="p">()</span><span class="o">.</span><span class="n">rect</span><span class="p">()</span><span class="o">.</span><span class="n">center</span><span class="p">())</span>
+
+        <span class="n">sign</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">delta</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">sign</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+
+        <span class="k">if</span> <span class="n">k_shift_alt</span><span class="p">:</span>
+            <span class="n">navCtrl</span><span class="o">.</span><span class="n">changeTimeRelative</span><span class="p">(</span><span class="n">sign</span><span class="o">*</span><span class="mi">10</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">k_alt</span><span class="p">:</span>
+            <span class="n">navCtrl</span><span class="o">.</span><span class="n">changeSliceRelative</span><span class="p">(</span><span class="n">sign</span><span class="o">*</span><span class="mi">10</span><span class="p">,</span> <span class="n">navCtrl</span><span class="o">.</span><span class="n">_views</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">imageview</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="n">k_ctrl</span><span class="p">:</span>
+            <span class="n">mult</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">delta</span><span class="p">()</span> <span class="o">/</span> <span class="mi">120</span><span class="p">))</span>
+            <span class="n">scaleFactor</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">+</span> <span class="n">sign</span><span class="o">*</span><span class="mf">0.1</span><span class="o">*</span><span class="n">mult</span>
+            <span class="n">imageview</span><span class="o">.</span><span class="n">doScale</span><span class="p">(</span><span class="n">scaleFactor</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">k_shift</span><span class="p">:</span>
+            <span class="n">navCtrl</span><span class="o">.</span><span class="n">changeTimeRelative</span><span class="p">(</span><span class="n">sign</span><span class="o">*</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c"># A single &#39;step&#39; of a scroll wheel is typically 15 degrees, which Qt represents with delta=120</span>
+            <span class="c"># We&#39;ll give a little boost so that 1 step is 1 plane, but 3 steps is 4 planes.</span>
+            <span class="n">planes</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span> <span class="mi">1</span><span class="p">,</span> <span class="p">(</span> <span class="n">sign</span><span class="o">*</span><span class="n">event</span><span class="o">.</span><span class="n">delta</span><span class="p">()</span> <span class="o">/</span> <span class="p">(</span><span class="mi">120</span><span class="o">*</span><span class="mi">3</span><span class="o">/</span><span class="mi">4</span><span class="p">)</span> <span class="p">)</span> <span class="p">)</span>
+            <span class="n">navCtrl</span><span class="o">.</span><span class="n">changeSliceRelative</span><span class="p">(</span><span class="n">sign</span><span class="o">*</span><span class="n">planes</span><span class="p">,</span> <span class="n">navCtrl</span><span class="o">.</span><span class="n">_views</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">imageview</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">k_ctrl</span><span class="p">:</span>
+            <span class="n">mousePosAfterScale</span> <span class="o">=</span> <span class="n">imageview</span><span class="o">.</span><span class="n">mapToScene</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">pos</span><span class="p">())</span>
+            <span class="n">offset</span> <span class="o">=</span> <span class="n">sceneMousePos</span> <span class="o">-</span> <span class="n">mousePosAfterScale</span>
+            <span class="n">newGrviewCenter</span> <span class="o">=</span> <span class="n">grviewCenter</span> <span class="o">+</span> <span class="n">offset</span>
+            <span class="n">imageview</span><span class="o">.</span><span class="n">centerOn</span><span class="p">(</span><span class="n">newGrviewCenter</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">onMouseMove_default</span><span class="p">(</span> <span class="n">imageview</span><span class="p">,</span> <span class="n">event</span> <span class="p">)</span>
+</div>
+<div class="viewcode-block" id="NavigationInterpreter.onMouseMove_default"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.NavigationInterpreter.onMouseMove_default">[docs]</a>    <span class="k">def</span> <span class="nf">onMouseMove_default</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">imageview</span><span class="p">,</span> <span class="n">event</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="n">imageview</span><span class="o">.</span><span class="n">_ticker</span><span class="o">.</span><span class="n">isActive</span><span class="p">():</span>
+            <span class="c">#the view is still scrolling</span>
+            <span class="c">#do nothing until it comes to a complete stop</span>
+            <span class="n">event</span><span class="o">.</span><span class="n">ignore</span><span class="p">()</span>
+            <span class="k">return</span> <span class="bp">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">updateCursorPosition</span><span class="p">(</span><span class="n">imageview</span><span class="p">,</span> <span class="n">event</span><span class="p">)</span>
+        <span class="c">#do not accept event</span>
+        <span class="n">event</span><span class="o">.</span><span class="n">ignore</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">False</span>
+</div>
+<div class="viewcode-block" id="NavigationInterpreter.updateCursorPosition"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.NavigationInterpreter.updateCursorPosition">[docs]</a>    <span class="k">def</span> <span class="nf">updateCursorPosition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">imageview</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Update the position model&#39;s cursor position according to the given event position.&quot;&quot;&quot;</span>
+        <span class="n">imageview</span><span class="o">.</span><span class="n">mousePos</span> <span class="o">=</span> <span class="n">mousePos</span> <span class="o">=</span> <span class="n">imageview</span><span class="o">.</span><span class="n">mapMouseCoordinates2Data</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">pos</span><span class="p">())</span>
+        <span class="n">imageview</span><span class="o">.</span><span class="n">oldX</span><span class="p">,</span> <span class="n">imageview</span><span class="o">.</span><span class="n">oldY</span> <span class="o">=</span> <span class="n">imageview</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">imageview</span><span class="o">.</span><span class="n">y</span>
+        <span class="n">dataX</span> <span class="o">=</span> <span class="n">imageview</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">mousePos</span><span class="o">.</span><span class="n">x</span><span class="p">()</span>
+        <span class="n">dataY</span> <span class="o">=</span> <span class="n">imageview</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">mousePos</span><span class="o">.</span><span class="n">y</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_navCtrl</span><span class="o">.</span><span class="n">positionDataCursor</span><span class="p">(</span><span class="n">QPointF</span><span class="p">(</span><span class="n">dataX</span><span class="p">,</span> <span class="n">dataY</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_navCtrl</span><span class="o">.</span><span class="n">_views</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">imageview</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="NavigationInterpreter.onMousePressRight_default"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.NavigationInterpreter.onMousePressRight_default">[docs]</a>    <span class="k">def</span> <span class="nf">onMousePressRight_default</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">imageview</span><span class="p">,</span> <span class="n">event</span> <span class="p">):</span>
+        <span class="c">#make sure that we have the cursor at the correct position</span>
+        <span class="c">#before we call the context menu</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">onMouseMove_default</span><span class="p">(</span> <span class="n">imageview</span><span class="p">,</span> <span class="n">event</span> <span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_itemsAt</span><span class="p">(</span><span class="n">imageview</span><span class="p">,</span> <span class="n">event</span><span class="o">.</span><span class="n">pos</span><span class="p">())</span> <span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+
+        <span class="n">pos</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">pos</span><span class="p">()</span>
+        <span class="n">imageview</span><span class="o">.</span><span class="n">customContextMenuRequested</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span> <span class="n">pos</span> <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">True</span>
+</div>
+    <span class="k">def</span> <span class="nf">_itemsAt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">imageview</span><span class="p">,</span> <span class="n">pos</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;returns all QGraphicsItem under the posistion &#39;pos&#39;, except those managed internally by volumina&quot;&quot;&quot;</span>
+        <span class="n">itms</span> <span class="o">=</span> <span class="n">imageview</span><span class="o">.</span><span class="n">items</span><span class="p">(</span><span class="n">pos</span><span class="p">)</span>
+        <span class="n">itms</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">itms</span> <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span> \
+                  <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">volumina</span><span class="o">.</span><span class="n">sliceIntersectionMarker</span><span class="o">.</span><span class="n">SliceIntersectionMarker</span><span class="p">)</span> <span class="ow">or</span> \
+                  <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">volumina</span><span class="o">.</span><span class="n">imageScene2D</span><span class="o">.</span><span class="n">DirtyIndicator</span><span class="p">)</span> <span class="ow">or</span> \
+                  <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">volumina</span><span class="o">.</span><span class="n">crossHairCursor</span><span class="o">.</span><span class="n">CrossHairCursor</span><span class="p">)</span> <span class="p">)</span> <span class="p">]</span>
+        <span class="k">return</span> <span class="n">itms</span>
+
+<div class="viewcode-block" id="NavigationInterpreter.onMouseDoubleClick_default"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.NavigationInterpreter.onMouseDoubleClick_default">[docs]</a>    <span class="k">def</span> <span class="nf">onMouseDoubleClick_default</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">imageview</span><span class="p">,</span> <span class="n">event</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_itemsAt</span><span class="p">(</span><span class="n">imageview</span><span class="p">,</span> <span class="n">event</span><span class="o">.</span><span class="n">pos</span><span class="p">())</span> <span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+
+        <span class="n">dataMousePos</span> <span class="o">=</span> <span class="n">imageview</span><span class="o">.</span><span class="n">mapScene2Data</span><span class="p">(</span><span class="n">imageview</span><span class="o">.</span><span class="n">mapToScene</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">pos</span><span class="p">()))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_navCtrl</span><span class="o">.</span><span class="n">navigateToPoint</span><span class="p">(</span><span class="n">dataMousePos</span><span class="o">.</span><span class="n">x</span><span class="p">(),</span> <span class="n">dataMousePos</span><span class="o">.</span><span class="n">y</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_navCtrl</span><span class="o">.</span><span class="n">_views</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">imageview</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">True</span>
+
+    <span class="c">###</span>
+    <span class="c">### Drag Mode</span>
+    <span class="c">###</span></div>
+<div class="viewcode-block" id="NavigationInterpreter.onEntry_drag"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.NavigationInterpreter.onEntry_drag">[docs]</a>    <span class="k">def</span> <span class="nf">onEntry_drag</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">imageview</span><span class="p">,</span> <span class="n">event</span> <span class="p">):</span>
+        <span class="n">imageview</span><span class="o">.</span><span class="n">setCursor</span><span class="p">(</span><span class="n">QCursor</span><span class="p">(</span><span class="n">Qt</span><span class="o">.</span><span class="n">SizeAllCursor</span><span class="p">))</span>
+        <span class="n">imageview</span><span class="o">.</span><span class="n">_lastPanPoint</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">pos</span><span class="p">()</span>
+        <span class="n">imageview</span><span class="o">.</span><span class="n">_crossHairCursor</span><span class="o">.</span><span class="n">setVisible</span><span class="p">(</span><span class="bp">False</span><span class="p">)</span>
+        <span class="n">imageview</span><span class="o">.</span><span class="n">_dragMode</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="k">if</span> <span class="n">imageview</span><span class="o">.</span><span class="n">_ticker</span><span class="o">.</span><span class="n">isActive</span><span class="p">():</span>
+            <span class="n">imageview</span><span class="o">.</span><span class="n">_deltaPan</span> <span class="o">=</span> <span class="n">QPointF</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="NavigationInterpreter.onExit_drag"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.NavigationInterpreter.onExit_drag">[docs]</a>    <span class="k">def</span> <span class="nf">onExit_drag</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">imageview</span><span class="p">,</span> <span class="n">event</span> <span class="p">):</span>
+        <span class="n">imageview</span><span class="o">.</span><span class="n">mousePos</span> <span class="o">=</span> <span class="n">imageview</span><span class="o">.</span><span class="n">mapScene2Data</span><span class="p">(</span><span class="n">imageview</span><span class="o">.</span><span class="n">mapToScene</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">pos</span><span class="p">()))</span>
+        <span class="n">imageview</span><span class="o">.</span><span class="n">setCursor</span><span class="p">(</span><span class="n">QCursor</span><span class="p">())</span>
+        <span class="n">releasePoint</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">pos</span><span class="p">()</span>
+        <span class="n">imageview</span><span class="o">.</span><span class="n">_lastPanPoint</span> <span class="o">=</span> <span class="n">releasePoint</span>
+        <span class="n">imageview</span><span class="o">.</span><span class="n">_dragMode</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="n">imageview</span><span class="o">.</span><span class="n">_ticker</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="NavigationInterpreter.onMouseMove_drag"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.NavigationInterpreter.onMouseMove_drag">[docs]</a>    <span class="k">def</span> <span class="nf">onMouseMove_drag</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">imageview</span><span class="p">,</span> <span class="n">event</span> <span class="p">):</span>
+        <span class="n">imageview</span><span class="o">.</span><span class="n">_deltaPan</span> <span class="o">=</span> <span class="n">QPointF</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">pos</span><span class="p">()</span> <span class="o">-</span> <span class="n">imageview</span><span class="o">.</span><span class="n">_lastPanPoint</span><span class="p">)</span>
+        <span class="n">imageview</span><span class="o">.</span><span class="n">_panning</span><span class="p">()</span>
+        <span class="n">imageview</span><span class="o">.</span><span class="n">_lastPanPoint</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">pos</span><span class="p">()</span></div></div>
+<span class="k">assert</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">NavigationInterpreter</span><span class="p">,</span> <span class="n">InterpreterABC</span><span class="p">)</span>
+
+<span class="c">#*******************************************************************************</span>
+<span class="c"># N a v i g a t i o n C o n t r o l e r                                        *</span>
+<span class="c">#*******************************************************************************</span>
+
+<div class="viewcode-block" id="NavigationControler"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.NavigationControler">[docs]</a><span class="k">class</span> <span class="nc">NavigationControler</span><span class="p">(</span><span class="n">QObject</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Controler for navigating through the volume.</span>
+
+<span class="sd">    The NavigationContrler object listens to changes</span>
+<span class="sd">    in a given PositionModel and updates three slice</span>
+<span class="sd">    views (representing the spatial X, Y and Z slicings)</span>
+<span class="sd">    accordingly.</span>
+
+<span class="sd">    properties:</span>
+
+<span class="sd">    indicateSliceIntersection -- whether to show red/green/blue lines</span>
+<span class="sd">        indicating the position of the other two slice views on each slice</span>
+<span class="sd">        view</span>
+
+<span class="sd">    enableNavigation -- whether the position is allowed to be changed</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">navigationEnabled</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">axisColors</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_axisColors</span>
+    <span class="nd">@axisColors.setter</span>
+<div class="viewcode-block" id="NavigationControler.axisColors"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.NavigationControler.axisColors">[docs]</a>    <span class="k">def</span> <span class="nf">axisColors</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">colors</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_axisColors</span> <span class="o">=</span> <span class="n">colors</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_views</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">_sliceIntersectionMarker</span><span class="o">.</span><span class="n">setColor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">axisColors</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">axisColors</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_views</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">_sliceIntersectionMarker</span><span class="o">.</span><span class="n">setColor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">axisColors</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">axisColors</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_views</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">_sliceIntersectionMarker</span><span class="o">.</span><span class="n">setColor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">axisColors</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">axisColors</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">axis</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_views</span><span class="p">):</span>
+            <span class="c">#FIXME: Bad dependency here on hud to be available!</span>
+            <span class="k">if</span> <span class="n">v</span><span class="o">.</span><span class="n">hud</span><span class="p">:</span> <span class="n">v</span><span class="o">.</span><span class="n">hud</span><span class="o">.</span><span class="n">bgColor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">axisColors</span><span class="p">[</span><span class="n">axis</span><span class="p">]</span>
+</div>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">indicateSliceIntersection</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_indicateSliceIntersection</span>
+    <span class="nd">@indicateSliceIntersection.setter</span>
+<div class="viewcode-block" id="NavigationControler.indicateSliceIntersection"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.NavigationControler.indicateSliceIntersection">[docs]</a>    <span class="k">def</span> <span class="nf">indicateSliceIntersection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">show</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_indicateSliceIntersection</span> <span class="o">=</span> <span class="n">show</span>
+        <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_views</span><span class="p">:</span>
+            <span class="n">v</span><span class="o">.</span><span class="n">_sliceIntersectionMarker</span><span class="o">.</span><span class="n">setVisibility</span><span class="p">(</span><span class="n">show</span><span class="p">)</span>
+</div>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">enableNavigation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_navigationEnabled</span>
+    <span class="nd">@enableNavigation.setter</span>
+<div class="viewcode-block" id="NavigationControler.enableNavigation"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.NavigationControler.enableNavigation">[docs]</a>    <span class="k">def</span> <span class="nf">enableNavigation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">enabled</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_navigationEnabled</span> <span class="o">=</span> <span class="n">enabled</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">navigationEnabled</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">enabled</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">imageView2Ds</span><span class="p">,</span> <span class="n">imagePumps</span><span class="p">,</span> <span class="n">positionModel</span><span class="p">,</span> <span class="n">time</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">channel</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">view3d</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">QObject</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">imageView2Ds</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span>
+
+        <span class="c"># init fields</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_views</span> <span class="o">=</span> <span class="n">imageView2Ds</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_imagePumps</span> <span class="o">=</span> <span class="n">imagePumps</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="n">positionModel</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_beginStackIndex</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_endStackIndex</span>   <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_view3d</span> <span class="o">=</span> <span class="n">view3d</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_navigationEnabled</span> <span class="o">=</span> <span class="bp">True</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">axisColors</span> <span class="o">=</span> <span class="p">[</span><span class="n">QColor</span><span class="p">(</span><span class="mi">255</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">255</span><span class="p">),</span> <span class="n">QColor</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">255</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">255</span><span class="p">),</span> <span class="n">QColor</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">255</span><span class="p">,</span><span class="mi">255</span><span class="p">)]</span>
+
+<div class="viewcode-block" id="NavigationControler.moveCrosshair"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.NavigationControler.moveCrosshair">[docs]</a>    <span class="k">def</span> <span class="nf">moveCrosshair</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">newPos</span><span class="p">,</span> <span class="n">oldPos</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_updateCrossHairCursor</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="NavigationControler.navigateToPoint"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.NavigationControler.navigateToPoint">[docs]</a>    <span class="k">def</span> <span class="nf">navigateToPoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">axis</span><span class="p">):</span>
+        <span class="n">newPos</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">slicingPos</span><span class="p">)</span>
+        <span class="n">i</span><span class="p">,</span><span class="n">j</span> <span class="o">=</span> <span class="n">posView2D</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span> <span class="n">axis</span><span class="p">)</span>
+        <span class="n">newPos</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span>
+        <span class="n">newPos</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">y</span>
+        <span class="k">if</span> <span class="n">newPos</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">slicingPos</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_positionValid</span><span class="p">(</span><span class="n">newPos</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="c"># pos must not be float.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">slicingPos</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">newPos</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">panSlicingViews</span><span class="p">(</span> <span class="n">newPos</span><span class="p">,</span> <span class="nb">filter</span><span class="p">(</span> <span class="k">lambda</span> <span class="n">a</span><span class="p">:</span> <span class="n">a</span> <span class="o">!=</span> <span class="n">axis</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">]</span> <span class="p">)</span> <span class="p">)</span>
+</div>
+<div class="viewcode-block" id="NavigationControler.panSlicingViews"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.NavigationControler.panSlicingViews">[docs]</a>    <span class="k">def</span> <span class="nf">panSlicingViews</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point3d</span><span class="p">,</span> <span class="n">axes</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        For each of the given axes, pan the slicing view to the ordinate-abscissa point in point3d,</span>
+<span class="sd">        but DON&#39;T change the slicing plane.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">axis</span><span class="p">,</span> <span class="n">view</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_views</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">axis</span> <span class="ow">in</span> <span class="n">axes</span><span class="p">:</span>
+                <span class="n">pos2d</span> <span class="o">=</span> <span class="n">posView2D</span><span class="p">(</span><span class="n">point3d</span><span class="p">,</span> <span class="n">axis</span><span class="p">)</span>
+                <span class="n">dataPoint</span> <span class="o">=</span> <span class="n">QPointF</span><span class="p">(</span> <span class="o">*</span><span class="n">pos2d</span> <span class="p">)</span>
+                <span class="n">scenePoint</span> <span class="o">=</span> <span class="n">view</span><span class="o">.</span><span class="n">scene</span><span class="p">()</span><span class="o">.</span><span class="n">data2scene</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">dataPoint</span><span class="p">)</span>
+                <span class="n">view</span><span class="o">.</span><span class="n">centerOn</span><span class="p">(</span> <span class="n">scenePoint</span> <span class="p">)</span>
+</div>
+<div class="viewcode-block" id="NavigationControler.moveSlicingPosition"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.NavigationControler.moveSlicingPosition">[docs]</a>    <span class="k">def</span> <span class="nf">moveSlicingPosition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">newPos</span><span class="p">,</span> <span class="n">oldPos</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">newPos</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">!=</span> <span class="n">oldPos</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_updateSlice</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">slicingPos</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">i</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_updateSliceIntersection</span><span class="p">()</span>
+
+        <span class="c">#when scrolling fast through the stack, we don&#39;t want to update</span>
+        <span class="c">#the 3d view all the time</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_view3d</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">def</span> <span class="nf">maybeUpdateSlice</span><span class="p">(</span><span class="n">oldSlicing</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">oldSlicing</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">slicingPos</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_view3d</span><span class="o">.</span><span class="n">ChangeSlice</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">slicingPos</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">i</span><span class="p">)</span>
+        <span class="n">QTimer</span><span class="o">.</span><span class="n">singleShot</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="n">partial</span><span class="p">(</span><span class="n">maybeUpdateSlice</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">slicingPos</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="NavigationControler.changeTime"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.NavigationControler.changeTime">[docs]</a>    <span class="k">def</span> <span class="nf">changeTime</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">newTime</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_imagePumps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">syncedSliceSources</span><span class="o">.</span><span class="n">setThrough</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">newTime</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="NavigationControler.changeTimeRelative"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.NavigationControler.changeTimeRelative">[docs]</a>    <span class="k">def</span> <span class="nf">changeTimeRelative</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">delta</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">shape5D</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">delta</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">cur_t</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_imagePumps</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">syncedSliceSources</span><span class="o">.</span><span class="n">through</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">new_t</span> <span class="o">=</span> <span class="n">cur_t</span> <span class="o">+</span> <span class="n">delta</span>
+
+        <span class="c">#sanitize</span>
+        <span class="n">new_t</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">new_t</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">new_t</span>
+        <span class="n">new_t</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">shape5D</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">new_t</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">shape5D</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">else</span> <span class="n">new_t</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="n">new_t</span>
+</div>
+<div class="viewcode-block" id="NavigationControler.changeChannel"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.NavigationControler.changeChannel">[docs]</a>    <span class="k">def</span> <span class="nf">changeChannel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">newChannel</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Change channel for all layers simultaneously.</span>
+
+<span class="sd">        This function can be used if all layers are synced along the</span>
+<span class="sd">        channel axis and the new channel value exists for all</span>
+<span class="sd">        layers. Use &#39;layerChangeChannel()&#39; otherwise.</span>
+<span class="sd">        </span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">for</span> <span class="n">pump</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_imagePumps</span><span class="p">:</span>
+            <span class="k">if</span> <span class="mi">2</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">pump</span><span class="o">.</span><span class="n">syncedSliceSources</span><span class="o">.</span><span class="n">getSyncAlong</span><span class="p">():</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s">&quot;NavigationControler.changeChannel: channel axis not synced in all image pumps; can&#39;t apply method&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">shape</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_imagePumps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">syncedSliceSources</span><span class="o">.</span><span class="n">setThrough</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">newChannel</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="NavigationControler.layerChangeChannel"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.NavigationControler.layerChangeChannel">[docs]</a>    <span class="k">def</span> <span class="nf">layerChangeChannel</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">layer</span> <span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Change the channel for a single layer.</span>
+
+<span class="sd">        This function can be used when the layers are not synced along</span>
+<span class="sd">        the channel axis. Use &#39;changeChannel()&#39; otherwise.</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">for</span> <span class="n">pump</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_imagePumps</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">src</span> <span class="ow">in</span> <span class="n">pump</span><span class="o">.</span><span class="n">layerToSliceSources</span><span class="p">(</span> <span class="n">layer</span> <span class="p">):</span>
+                <span class="n">src</span><span class="o">.</span><span class="n">setThrough</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">layer</span><span class="o">.</span><span class="n">channel</span><span class="p">)</span>
+        <span class="c"># Note: we update the slice sources of a layer</span>
+        <span class="c"># sequentially. This could cause flickering if there are</span>
+        <span class="c"># two or more slice sources per layer (like a RGBA layer). </span>
+</div>
+<div class="viewcode-block" id="NavigationControler.changeSliceRelative"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.NavigationControler.changeSliceRelative">[docs]</a>    <span class="k">def</span> <span class="nf">changeSliceRelative</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delta</span><span class="p">,</span> <span class="n">axis</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">shape</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Change slice along a certain axis relative to current slice.</span>
+
+<span class="sd">        delta -- add delta to current slice position [positive or negative int]</span>
+<span class="sd">        axis  -- along which axis [0,1,2]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">delta</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">newSlice</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">slicingPos</span><span class="p">[</span><span class="n">axis</span><span class="p">]</span> <span class="o">+</span> <span class="n">delta</span>
+        
+        <span class="c">#sanitize</span>
+        <span class="n">newSlice</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">newSlice</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">newSlice</span>
+        <span class="n">newSlice</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">volumeExtent</span><span class="p">(</span><span class="n">axis</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span> <span class="k">if</span> <span class="n">newSlice</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">volumeExtent</span><span class="p">(</span><span class="n">axis</span><span class="p">)</span> <span class="k">else</span> <span class="n">newSlice</span>
+
+        <span class="n">newPos</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">slicingPos</span><span class="p">)</span>
+        <span class="n">newPos</span><span class="p">[</span><span class="n">axis</span><span class="p">]</span> <span class="o">=</span> <span class="n">newSlice</span>
+
+        <span class="n">cursorPos</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">cursorPos</span><span class="p">)</span>
+        <span class="n">cursorPos</span><span class="p">[</span><span class="n">axis</span><span class="p">]</span> <span class="o">=</span> <span class="n">newSlice</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">cursorPos</span>  <span class="o">=</span> <span class="n">cursorPos</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">slicingPos</span> <span class="o">=</span> <span class="n">newPos</span>
+</div>
+<div class="viewcode-block" id="NavigationControler.changeSliceAbsolute"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.NavigationControler.changeSliceAbsolute">[docs]</a>    <span class="k">def</span> <span class="nf">changeSliceAbsolute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">axis</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Change slice along a certain axis.</span>
+
+<span class="sd">        value -- slice number</span>
+<span class="sd">        axis  -- along which axis [0,1,2]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">value</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">value</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">volumeExtent</span><span class="p">(</span><span class="n">axis</span><span class="p">):</span>
+            <span class="k">return</span>
+        <span class="n">newPos</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">slicingPos</span><span class="p">)</span>
+        <span class="n">newPos</span><span class="p">[</span><span class="n">axis</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_positionValid</span><span class="p">(</span><span class="n">newPos</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="n">cursorPos</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">cursorPos</span><span class="p">)</span>
+        <span class="n">cursorPos</span><span class="p">[</span><span class="n">axis</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">cursorPos</span>  <span class="o">=</span> <span class="n">cursorPos</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">slicingPos</span> <span class="o">=</span> <span class="n">newPos</span>
+</div>
+<div class="viewcode-block" id="NavigationControler.settleSlicingPosition"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.NavigationControler.settleSlicingPosition">[docs]</a>    <span class="k">def</span> <span class="nf">settleSlicingPosition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">settled</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_views</span><span class="p">:</span>
+            <span class="n">v</span><span class="o">.</span><span class="n">indicateSlicingPositionSettled</span><span class="p">(</span><span class="n">settled</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="NavigationControler.positionDataCursor"><a class="viewcode-back" href="../../volumina.html#volumina.navigationControler.NavigationControler.positionDataCursor">[docs]</a>    <span class="k">def</span> <span class="nf">positionDataCursor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataCoord2D</span><span class="p">,</span> <span class="n">axis</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Change position of the crosshair cursor.</span>
+<span class="sd">        dataCord2D -- 2D coordinate on the slicing plane perpendicular to axis</span>
+<span class="sd">                      in data coordinate system</span>
+<span class="sd">        axis -- perpendicular axis [0,1,2]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c">#we get the 2D coordinates x,y from the view that</span>
+        <span class="c">#shows the projection perpendicular to axis</span>
+        <span class="c">#set this view as active</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">activeView</span> <span class="o">=</span> <span class="n">axis</span>
+
+        <span class="n">newPos</span> <span class="o">=</span> <span class="p">[</span><span class="n">dataCoord2D</span><span class="o">.</span><span class="n">x</span><span class="p">(),</span> <span class="n">dataCoord2D</span><span class="o">.</span><span class="n">y</span><span class="p">()]</span>
+        <span class="n">newPos</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">axis</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">slicingPos</span><span class="p">[</span><span class="n">axis</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_positionValid</span><span class="p">(</span><span class="n">newPos</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">False</span>
+
+        <span class="k">if</span> <span class="n">newPos</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">cursorPos</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">True</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">cursorPos</span> <span class="o">=</span> <span class="n">newPos</span>
+
+        <span class="k">return</span> <span class="bp">True</span>
+
+    <span class="c">#private functions ########################################################</span>
+</div>
+    <span class="k">def</span> <span class="nf">_updateCrossHairCursor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">dataX</span><span class="p">,</span> <span class="n">dataY</span> <span class="o">=</span> <span class="n">posView2D</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">cursorPos</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">activeView</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_views</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">activeView</span><span class="p">]</span><span class="o">.</span><span class="n">_crossHairCursor</span><span class="o">.</span><span class="n">showXYPosition</span><span class="p">(</span><span class="n">dataX</span><span class="p">,</span> <span class="n">dataY</span><span class="p">)</span>
+        
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_views</span><span class="p">):</span>
+            <span class="n">v</span><span class="o">.</span><span class="n">_crossHairCursor</span><span class="o">.</span><span class="n">setVisible</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">activeView</span> <span class="o">==</span> <span class="n">i</span> <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_updateSliceIntersection</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">axis</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_views</span><span class="p">):</span>
+            <span class="n">dataX</span><span class="p">,</span> <span class="n">dataY</span> <span class="o">=</span> <span class="n">posView2D</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">slicingPos</span><span class="p">,</span> <span class="n">axis</span><span class="p">)</span>
+            <span class="n">v</span><span class="o">.</span><span class="n">_sliceIntersectionMarker</span><span class="o">.</span><span class="n">setPosition</span><span class="p">(</span> <span class="n">dataX</span><span class="p">,</span> <span class="n">dataY</span> <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_updateSlice</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num</span><span class="p">,</span> <span class="n">axis</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">num</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">num</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">volumeExtent</span><span class="p">(</span><span class="n">axis</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;NavigationControler._setSlice(): invalid slice number = </span><span class="si">%d</span><span class="s"> not in range [0,</span><span class="si">%d</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">num</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">volumeExtent</span><span class="p">(</span><span class="n">axis</span><span class="p">)))</span>
+        <span class="c">#FIXME: Shouldnt the hud listen to the model changes itself?</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_views</span><span class="p">[</span><span class="n">axis</span><span class="p">]</span><span class="o">.</span><span class="n">hud</span><span class="o">.</span><span class="n">sliceSelector</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="n">num</span><span class="p">)</span>
+
+        <span class="c">#re-configure the slice source</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_imagePumps</span><span class="p">[</span><span class="n">axis</span><span class="p">]</span><span class="o">.</span><span class="n">syncedSliceSources</span><span class="o">.</span><span class="n">setThrough</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">num</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_positionValid</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pos</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">shape</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">pos</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">pos</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+                <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">return</span> <span class="bp">True</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Bernhard X. Kausler, Thorben Kröger, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

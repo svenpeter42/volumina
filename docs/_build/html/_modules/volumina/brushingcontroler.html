@@ -1,0 +1,357 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>volumina.brushingcontroler &mdash; volumina 0.6.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../static/jquery.js"></script>
+    <script type="text/javascript" src="../../static/underscore.js"></script>
+    <script type="text/javascript" src="../../static/doctools.js"></script>
+    <link rel="top" title="volumina 0.6.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for volumina.brushingcontroler</h1><div class="highlight"><pre>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+<span class="kn">from</span> <span class="nn">PyQt4.QtCore</span> <span class="kn">import</span> <span class="n">pyqtSignal</span><span class="p">,</span> <span class="n">QObject</span><span class="p">,</span> <span class="n">QEvent</span><span class="p">,</span> <span class="n">QPointF</span><span class="p">,</span> <span class="n">Qt</span><span class="p">,</span> <span class="n">QTimer</span>
+<span class="kn">from</span> <span class="nn">PyQt4.QtGui</span> <span class="kn">import</span> <span class="n">QPen</span><span class="p">,</span> <span class="n">QBrush</span><span class="p">,</span> <span class="n">QApplication</span><span class="p">,</span> <span class="n">QMouseEvent</span><span class="p">,</span> <span class="n">QGraphicsLineItem</span>
+
+<span class="kn">from</span> <span class="nn">navigationControler</span> <span class="kn">import</span> <span class="n">NavigationInterpreter</span>
+
+<span class="c">#*******************************************************************************</span>
+<span class="c"># C r o s s h a i r C o n t r o l e r                                          *</span>
+<span class="c">#*******************************************************************************</span>
+
+<div class="viewcode-block" id="CrosshairControler"><a class="viewcode-back" href="../../volumina.html#volumina.brushingcontroler.CrosshairControler">[docs]</a><span class="k">class</span> <span class="nc">CrosshairControler</span><span class="p">(</span><span class="n">QObject</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">brushingModel</span><span class="p">,</span> <span class="n">imageViews</span><span class="p">):</span>
+        <span class="n">QObject</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_brushingModel</span> <span class="o">=</span> <span class="n">brushingModel</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_brushingModel</span><span class="o">.</span><span class="n">brushSizeChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_setBrushSize</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_brushingModel</span><span class="o">.</span><span class="n">brushColorChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_setBrushColor</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_imageViews</span> <span class="o">=</span> <span class="n">imageViews</span>
+
+    <span class="k">def</span> <span class="nf">_setBrushSize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_imageViews</span><span class="p">:</span>
+            <span class="n">v</span><span class="o">.</span><span class="n">_crossHairCursor</span><span class="o">.</span><span class="n">setBrushSize</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_setBrushColor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">color</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_imageViews</span><span class="p">:</span>
+            <span class="n">v</span><span class="o">.</span><span class="n">_crossHairCursor</span><span class="o">.</span><span class="n">setColor</span><span class="p">(</span><span class="n">color</span><span class="p">)</span>
+
+<span class="c">#*******************************************************************************</span>
+<span class="c"># B r u s h i n g I n t e r p r e t e r                                        *</span>
+<span class="c">#*******************************************************************************</span>
+</div>
+<div class="viewcode-block" id="BrushingInterpreter"><a class="viewcode-back" href="../../volumina.html#volumina.brushingcontroler.BrushingInterpreter">[docs]</a><span class="k">class</span> <span class="nc">BrushingInterpreter</span><span class="p">(</span> <span class="n">QObject</span> <span class="p">):</span>
+    <span class="c"># states</span>
+    <span class="n">FINAL</span>           <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">DEFAULT_MODE</span>    <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="c"># FIXME: This state isn&#39;t really needed, now that we use a QTimer to manage the double-click case.</span>
+    <span class="c">#        (The state machine should be rewritten.)</span>
+    <span class="n">MAYBE_DRAW_MODE</span> <span class="o">=</span> <span class="mi">2</span> <span class="c">#received a single left-click; however, the next event</span>
+                        <span class="c">#might be a double-click event; therefore the state has</span>
+                        <span class="c">#not been decided yet</span>
+    <span class="n">DRAW_MODE</span>       <span class="o">=</span> <span class="mi">3</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="BrushingInterpreter.state"><a class="viewcode-back" href="../../volumina.html#volumina.brushingcontroler.BrushingInterpreter.state">[docs]</a>    <span class="k">def</span> <span class="nf">state</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_state</span>
+</div>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">navigationControler</span><span class="p">,</span> <span class="n">brushingControler</span> <span class="p">):</span>
+        <span class="n">QObject</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span> <span class="bp">self</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_navCtrl</span> <span class="o">=</span> <span class="n">navigationControler</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_navIntr</span> <span class="o">=</span> <span class="n">NavigationInterpreter</span><span class="p">(</span> <span class="n">navigationControler</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_brushingCtrl</span> <span class="o">=</span> <span class="n">brushingControler</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">FINAL</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_temp_erasing</span> <span class="o">=</span> <span class="bp">False</span> <span class="c"># indicates, if user pressed shift</span>
+                                   <span class="c"># for temporary erasing (in</span>
+                                   <span class="c"># contrast to selecting the eraser brush)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lineItems</span> <span class="o">=</span> <span class="p">[]</span> <span class="c"># list of line items that have been</span>
+                            <span class="c"># added to the qgraphicsscene for drawing indication</span>
+                            
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lastEvent</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_doubleClickTimer</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="c"># clear the temporary line items once they</span>
+        <span class="c"># have been pushed to the sink</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_brushingCtrl</span><span class="o">.</span><span class="n">wroteToSink</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">clearLines</span><span class="p">)</span>
+
+<div class="viewcode-block" id="BrushingInterpreter.start"><a class="viewcode-back" href="../../volumina.html#volumina.brushingcontroler.BrushingInterpreter.start">[docs]</a>    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_state</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">FINAL</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_navIntr</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_current_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">DEFAULT_MODE</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">pass</span> <span class="c"># ignore</span>
+</div>
+<div class="viewcode-block" id="BrushingInterpreter.stop"><a class="viewcode-back" href="../../volumina.html#volumina.brushingcontroler.BrushingInterpreter.stop">[docs]</a>    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_brushingCtrl</span><span class="o">.</span><span class="n">_isDrawing</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">imageview</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_navCtrl</span><span class="o">.</span><span class="n">_views</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_brushingCtrl</span><span class="o">.</span><span class="n">endDrawing</span><span class="p">(</span><span class="n">imageview</span><span class="o">.</span><span class="n">mousePos</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">FINAL</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_navIntr</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="BrushingInterpreter.eventFilter"><a class="viewcode-back" href="../../volumina.html#volumina.brushingcontroler.BrushingInterpreter.eventFilter">[docs]</a>    <span class="k">def</span> <span class="nf">eventFilter</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">watched</span><span class="p">,</span> <span class="n">event</span> <span class="p">):</span>
+        <span class="n">etype</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">type</span><span class="p">()</span>
+        
+        <span class="k">if</span> <span class="n">etype</span> <span class="o">==</span> <span class="n">QEvent</span><span class="o">.</span><span class="n">MouseButtonDblClick</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_doubleClickTimer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="c"># On doubleclick, cancel release handler that normally draws the stroke.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_doubleClickTimer</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_doubleClickTimer</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_current_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">DEFAULT_MODE</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">onEntry_default</span><span class="p">(</span> <span class="n">watched</span><span class="p">,</span> <span class="n">event</span> <span class="p">)</span>
+        
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_state</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">DEFAULT_MODE</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">etype</span> <span class="o">==</span> <span class="n">QEvent</span><span class="o">.</span><span class="n">MouseButtonPress</span> \
+                <span class="ow">and</span> <span class="n">event</span><span class="o">.</span><span class="n">button</span><span class="p">()</span> <span class="o">==</span> <span class="n">Qt</span><span class="o">.</span><span class="n">LeftButton</span> \
+                <span class="ow">and</span> <span class="n">event</span><span class="o">.</span><span class="n">modifiers</span><span class="p">()</span> <span class="o">==</span> <span class="n">Qt</span><span class="o">.</span><span class="n">NoModifier</span> \
+                <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_navIntr</span><span class="o">.</span><span class="n">mousePositionValid</span><span class="p">(</span><span class="n">watched</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+                
+                <span class="c">### default mode -&gt; maybe draw mode</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_current_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">MAYBE_DRAW_MODE</span>
+
+                <span class="c"># event will not be valid to use after this function exits,</span>
+                <span class="c"># so we must make a copy of it instead of just saving the pointer</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_lastEvent</span> <span class="o">=</span> <span class="n">QMouseEvent</span><span class="p">(</span> <span class="n">event</span><span class="o">.</span><span class="n">type</span><span class="p">(),</span> <span class="n">event</span><span class="o">.</span><span class="n">pos</span><span class="p">(),</span> <span class="n">event</span><span class="o">.</span><span class="n">globalPos</span><span class="p">(),</span> <span class="n">event</span><span class="o">.</span><span class="n">button</span><span class="p">(),</span> <span class="n">event</span><span class="o">.</span><span class="n">buttons</span><span class="p">(),</span> <span class="n">event</span><span class="o">.</span><span class="n">modifiers</span><span class="p">()</span> <span class="p">)</span>
+                
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_state</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">MAYBE_DRAW_MODE</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">etype</span> <span class="o">==</span> <span class="n">QEvent</span><span class="o">.</span><span class="n">MouseMove</span><span class="p">:</span>
+                <span class="c"># navigation interpreter also has to be in</span>
+                <span class="c"># default mode to avoid inconsistencies</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_navIntr</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_navIntr</span><span class="o">.</span><span class="n">DEFAULT_MODE</span><span class="p">:</span>
+                    <span class="c">### maybe draw mode -&gt; maybe draw mode</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_current_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">DRAW_MODE</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">onEntry_draw</span><span class="p">(</span> <span class="n">watched</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lastEvent</span> <span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">onMouseMove_draw</span><span class="p">(</span> <span class="n">watched</span><span class="p">,</span> <span class="n">event</span> <span class="p">)</span>
+                    <span class="k">return</span> <span class="bp">True</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_navIntr</span><span class="o">.</span><span class="n">eventFilter</span><span class="p">(</span> <span class="n">watched</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lastEvent</span> <span class="p">)</span>
+                    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_navIntr</span><span class="o">.</span><span class="n">eventFilter</span><span class="p">(</span> <span class="n">watched</span><span class="p">,</span> <span class="n">event</span> <span class="p">)</span>
+            <span class="k">elif</span> <span class="n">etype</span> <span class="o">==</span> <span class="n">QEvent</span><span class="o">.</span><span class="n">MouseButtonDblClick</span><span class="p">:</span>
+                <span class="c">### maybe draw mode -&gt; default mode</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_current_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">DEFAULT_MODE</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_navIntr</span><span class="o">.</span><span class="n">eventFilter</span><span class="p">(</span> <span class="n">watched</span><span class="p">,</span> <span class="n">event</span> <span class="p">)</span>
+            <span class="k">elif</span> <span class="n">etype</span> <span class="o">==</span> <span class="n">QEvent</span><span class="o">.</span><span class="n">MouseButtonRelease</span><span class="p">:</span>
+                <span class="k">def</span> <span class="nf">handleRelease</span><span class="p">(</span><span class="n">releaseEvent</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_current_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">DRAW_MODE</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">onEntry_draw</span><span class="p">(</span> <span class="n">watched</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lastEvent</span> <span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">onExit_draw</span><span class="p">(</span> <span class="n">watched</span><span class="p">,</span> <span class="n">releaseEvent</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_current_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">DEFAULT_MODE</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">onEntry_default</span><span class="p">(</span> <span class="n">watched</span><span class="p">,</span> <span class="n">releaseEvent</span> <span class="p">)</span>
+
+                <span class="c"># If this event is part of a double-click, we don&#39;t really want to handle it.</span>
+                <span class="c"># Typical event sequence is press, release, double-click (not two presses).</span>
+                <span class="c"># Instead of handling this right away, set a timer to do the work.</span>
+                <span class="c"># We&#39;ll cancel the timer if we see a double-click event (see above).</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_doubleClickTimer</span> <span class="o">=</span> <span class="n">QTimer</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_doubleClickTimer</span><span class="o">.</span><span class="n">setInterval</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_doubleClickTimer</span><span class="o">.</span><span class="n">setSingleShot</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+                <span class="c"># event will not be valid to use after this function exits,</span>
+                <span class="c"># so we must make a copy of it instead of just saving the pointer</span>
+                <span class="n">eventCopy</span> <span class="o">=</span> <span class="n">QMouseEvent</span><span class="p">(</span> <span class="n">event</span><span class="o">.</span><span class="n">type</span><span class="p">(),</span> <span class="n">event</span><span class="o">.</span><span class="n">pos</span><span class="p">(),</span> <span class="n">event</span><span class="o">.</span><span class="n">button</span><span class="p">(),</span> <span class="n">event</span><span class="o">.</span><span class="n">buttons</span><span class="p">(),</span> <span class="n">event</span><span class="o">.</span><span class="n">modifiers</span><span class="p">()</span> <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_doubleClickTimer</span><span class="o">.</span><span class="n">timeout</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="n">partial</span><span class="p">(</span><span class="n">handleRelease</span><span class="p">,</span> <span class="n">eventCopy</span> <span class="p">)</span> <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_doubleClickTimer</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+                <span class="k">return</span> <span class="bp">True</span>
+
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_state</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">DRAW_MODE</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">etype</span> <span class="o">==</span> <span class="n">QEvent</span><span class="o">.</span><span class="n">MouseButtonRelease</span> <span class="ow">and</span> <span class="n">event</span><span class="o">.</span><span class="n">button</span><span class="p">()</span> <span class="o">==</span> <span class="n">Qt</span><span class="o">.</span><span class="n">LeftButton</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">onExit_draw</span><span class="p">(</span> <span class="n">watched</span><span class="p">,</span> <span class="n">event</span> <span class="p">)</span>
+                <span class="c">### draw mode -&gt; default mode</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_current_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">DEFAULT_MODE</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">onEntry_default</span><span class="p">(</span> <span class="n">watched</span><span class="p">,</span> <span class="n">event</span> <span class="p">)</span>
+                <span class="k">return</span> <span class="bp">True</span>
+
+            <span class="k">elif</span> <span class="n">etype</span> <span class="o">==</span> <span class="n">QEvent</span><span class="o">.</span><span class="n">MouseMove</span> <span class="ow">and</span> <span class="n">event</span><span class="o">.</span><span class="n">buttons</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">Qt</span><span class="o">.</span><span class="n">LeftButton</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_navIntr</span><span class="o">.</span><span class="n">mousePositionValid</span><span class="p">(</span><span class="n">watched</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">onMouseMove_draw</span><span class="p">(</span> <span class="n">watched</span><span class="p">,</span> <span class="n">event</span> <span class="p">)</span>
+                    <span class="k">return</span> <span class="bp">True</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">onExit_draw</span><span class="p">(</span> <span class="n">watched</span><span class="p">,</span> <span class="n">event</span> <span class="p">)</span>
+                    <span class="c">### draw mode -&gt; default mode</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_current_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">DEFAULT_MODE</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">onEntry_default</span><span class="p">(</span> <span class="n">watched</span><span class="p">,</span> <span class="n">event</span> <span class="p">)</span>
+
+        <span class="c"># let the navigation interpreter handle common events</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_navIntr</span><span class="o">.</span><span class="n">eventFilter</span><span class="p">(</span> <span class="n">watched</span><span class="p">,</span> <span class="n">event</span> <span class="p">)</span>
+
+    <span class="c">###</span>
+    <span class="c">### Default Mode</span>
+    <span class="c">###</span></div>
+<div class="viewcode-block" id="BrushingInterpreter.onEntry_default"><a class="viewcode-back" href="../../volumina.html#volumina.brushingcontroler.BrushingInterpreter.onEntry_default">[docs]</a>    <span class="k">def</span> <span class="nf">onEntry_default</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">imageview</span><span class="p">,</span> <span class="n">event</span> <span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="c">###</span>
+    <span class="c">### Draw Mode</span>
+    <span class="c">###</span></div>
+<div class="viewcode-block" id="BrushingInterpreter.onEntry_draw"><a class="viewcode-back" href="../../volumina.html#volumina.brushingcontroler.BrushingInterpreter.onEntry_draw">[docs]</a>    <span class="k">def</span> <span class="nf">onEntry_draw</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">imageview</span><span class="p">,</span> <span class="n">event</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="n">QApplication</span><span class="o">.</span><span class="n">keyboardModifiers</span><span class="p">()</span> <span class="o">==</span> <span class="n">Qt</span><span class="o">.</span><span class="n">ShiftModifier</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_brushingCtrl</span><span class="o">.</span><span class="n">_brushingModel</span><span class="o">.</span><span class="n">setErasing</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_temp_erasing</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="n">imageview</span><span class="o">.</span><span class="n">mousePos</span> <span class="o">=</span> <span class="n">imageview</span><span class="o">.</span><span class="n">mapScene2Data</span><span class="p">(</span><span class="n">imageview</span><span class="o">.</span><span class="n">mapToScene</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">pos</span><span class="p">()))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_brushingCtrl</span><span class="o">.</span><span class="n">beginDrawing</span><span class="p">(</span><span class="n">imageview</span><span class="p">,</span> <span class="n">imageview</span><span class="o">.</span><span class="n">mousePos</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="BrushingInterpreter.onExit_draw"><a class="viewcode-back" href="../../volumina.html#volumina.brushingcontroler.BrushingInterpreter.onExit_draw">[docs]</a>    <span class="k">def</span> <span class="nf">onExit_draw</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">imageview</span><span class="p">,</span> <span class="n">event</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_brushingCtrl</span><span class="o">.</span><span class="n">endDrawing</span><span class="p">(</span><span class="n">imageview</span><span class="o">.</span><span class="n">mousePos</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_temp_erasing</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_brushingCtrl</span><span class="o">.</span><span class="n">_brushingModel</span><span class="o">.</span><span class="n">disableErasing</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_temp_erasing</span> <span class="o">=</span> <span class="bp">False</span>
+</div>
+<div class="viewcode-block" id="BrushingInterpreter.onMouseMove_draw"><a class="viewcode-back" href="../../volumina.html#volumina.brushingcontroler.BrushingInterpreter.onMouseMove_draw">[docs]</a>    <span class="k">def</span> <span class="nf">onMouseMove_draw</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">imageview</span><span class="p">,</span> <span class="n">event</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_navIntr</span><span class="o">.</span><span class="n">onMouseMove_default</span><span class="p">(</span> <span class="n">imageview</span><span class="p">,</span> <span class="n">event</span> <span class="p">)</span>
+
+        <span class="n">o</span> <span class="o">=</span> <span class="n">imageview</span><span class="o">.</span><span class="n">scene</span><span class="p">()</span><span class="o">.</span><span class="n">data2scene</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">QPointF</span><span class="p">(</span><span class="n">imageview</span><span class="o">.</span><span class="n">oldX</span><span class="p">,</span><span class="n">imageview</span><span class="o">.</span><span class="n">oldY</span><span class="p">))</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="n">imageview</span><span class="o">.</span><span class="n">scene</span><span class="p">()</span><span class="o">.</span><span class="n">data2scene</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">QPointF</span><span class="p">(</span><span class="n">imageview</span><span class="o">.</span><span class="n">x</span><span class="p">,</span><span class="n">imageview</span><span class="o">.</span><span class="n">y</span><span class="p">))</span>
+
+        <span class="c"># Draw temporary line for the brush stroke so the user gets feedback before the data is really updated.</span>
+        <span class="n">pen</span> <span class="o">=</span> <span class="n">QPen</span><span class="p">(</span> <span class="n">QBrush</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_brushingCtrl</span><span class="o">.</span><span class="n">_brushingModel</span><span class="o">.</span><span class="n">drawColor</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_brushingCtrl</span><span class="o">.</span><span class="n">_brushingModel</span><span class="o">.</span><span class="n">brushSize</span><span class="p">,</span> <span class="n">Qt</span><span class="o">.</span><span class="n">SolidLine</span><span class="p">,</span> <span class="n">Qt</span><span class="o">.</span><span class="n">RoundCap</span><span class="p">,</span> <span class="n">Qt</span><span class="o">.</span><span class="n">RoundJoin</span><span class="p">)</span>
+        <span class="n">line</span> <span class="o">=</span> <span class="n">QGraphicsLineItem</span><span class="p">(</span><span class="n">o</span><span class="o">.</span><span class="n">x</span><span class="p">(),</span> <span class="n">o</span><span class="o">.</span><span class="n">y</span><span class="p">(),</span> <span class="n">n</span><span class="o">.</span><span class="n">x</span><span class="p">(),</span> <span class="n">n</span><span class="o">.</span><span class="n">y</span><span class="p">())</span>
+        <span class="n">line</span><span class="o">.</span><span class="n">setPen</span><span class="p">(</span><span class="n">pen</span><span class="p">)</span>
+        
+        <span class="n">imageview</span><span class="o">.</span><span class="n">scene</span><span class="p">()</span><span class="o">.</span><span class="n">addItem</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+        <span class="n">line</span><span class="o">.</span><span class="n">setParentItem</span><span class="p">(</span><span class="n">imageview</span><span class="o">.</span><span class="n">scene</span><span class="p">()</span><span class="o">.</span><span class="n">dataRect</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lineItems</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_brushingCtrl</span><span class="o">.</span><span class="n">_brushingModel</span><span class="o">.</span><span class="n">moveTo</span><span class="p">(</span><span class="n">imageview</span><span class="o">.</span><span class="n">mousePos</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="BrushingInterpreter.clearLines"><a class="viewcode-back" href="../../volumina.html#volumina.brushingcontroler.BrushingInterpreter.clearLines">[docs]</a>    <span class="k">def</span> <span class="nf">clearLines</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c"># This is called after the brush stroke is stored to the data.</span>
+        <span class="c"># Our temporary line object is no longer needed because the data provides the true pixel labels that were stored.</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lineItems</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lineItems</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span>
+            <span class="n">l</span><span class="o">.</span><span class="n">hide</span><span class="p">()</span>
+
+<span class="c">#*******************************************************************************</span>
+<span class="c"># B r u s h i n g C o n t r o l e r                                            *</span>
+<span class="c">#*******************************************************************************</span>
+</div></div>
+<div class="viewcode-block" id="BrushingControler"><a class="viewcode-back" href="../../volumina.html#volumina.brushingcontroler.BrushingControler">[docs]</a><span class="k">class</span> <span class="nc">BrushingControler</span><span class="p">(</span><span class="n">QObject</span><span class="p">):</span>
+    <span class="n">wroteToSink</span>     <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">brushingModel</span><span class="p">,</span> <span class="n">positionModel</span><span class="p">,</span> <span class="n">dataSink</span><span class="p">):</span>
+        <span class="n">QObject</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dataSink</span> <span class="o">=</span> <span class="n">dataSink</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_brushingModel</span> <span class="o">=</span> <span class="n">brushingModel</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_brushingModel</span><span class="o">.</span><span class="n">brushStrokeAvailable</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_writeIntoSink</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_positionModel</span> <span class="o">=</span> <span class="n">positionModel</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_isDrawing</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tempErase</span> <span class="o">=</span> <span class="bp">False</span>
+
+<div class="viewcode-block" id="BrushingControler.beginDrawing"><a class="viewcode-back" href="../../volumina.html#volumina.brushingcontroler.BrushingControler.beginDrawing">[docs]</a>    <span class="k">def</span> <span class="nf">beginDrawing</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">imageview</span><span class="p">,</span> <span class="n">pos</span><span class="p">):</span>
+        <span class="n">imageview</span><span class="o">.</span><span class="n">mousePos</span> <span class="o">=</span> <span class="n">pos</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_isDrawing</span>  <span class="o">=</span> <span class="bp">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_brushingModel</span><span class="o">.</span><span class="n">beginDrawing</span><span class="p">(</span><span class="n">pos</span><span class="p">,</span> <span class="n">imageview</span><span class="o">.</span><span class="n">sliceShape</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="BrushingControler.endDrawing"><a class="viewcode-back" href="../../volumina.html#volumina.brushingcontroler.BrushingControler.endDrawing">[docs]</a>    <span class="k">def</span> <span class="nf">endDrawing</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pos</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_isDrawing</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_brushingModel</span><span class="o">.</span><span class="n">endDrawing</span><span class="p">(</span><span class="n">pos</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="BrushingControler.setDataSink"><a class="viewcode-back" href="../../volumina.html#volumina.brushingcontroler.BrushingControler.setDataSink">[docs]</a>    <span class="k">def</span> <span class="nf">setDataSink</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataSink</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dataSink</span> <span class="o">=</span> <span class="n">dataSink</span>
+</div>
+    <span class="k">def</span> <span class="nf">_writeIntoSink</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">brushStrokeOffset</span><span class="p">,</span> <span class="n">labels</span><span class="p">):</span>
+        <span class="n">activeView</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_positionModel</span><span class="o">.</span><span class="n">activeView</span>
+        <span class="n">slicingPos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_positionModel</span><span class="o">.</span><span class="n">slicingPos</span>
+        <span class="n">t</span><span class="p">,</span> <span class="n">c</span>       <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_positionModel</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_positionModel</span><span class="o">.</span><span class="n">channel</span>
+
+        <span class="n">slicing</span> <span class="o">=</span> <span class="p">[</span><span class="nb">slice</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">brushStrokeOffset</span><span class="o">.</span><span class="n">x</span><span class="p">()),</span> <span class="nb">int</span><span class="p">(</span><span class="n">brushStrokeOffset</span><span class="o">.</span><span class="n">x</span><span class="p">())</span><span class="o">+</span><span class="n">labels</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> \
+                   <span class="nb">slice</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">brushStrokeOffset</span><span class="o">.</span><span class="n">y</span><span class="p">()),</span> <span class="nb">int</span><span class="p">(</span><span class="n">brushStrokeOffset</span><span class="o">.</span><span class="n">y</span><span class="p">())</span><span class="o">+</span><span class="n">labels</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])]</span>
+        <span class="n">slicing</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">activeView</span><span class="p">,</span> <span class="nb">slice</span><span class="p">(</span><span class="n">slicingPos</span><span class="p">[</span><span class="n">activeView</span><span class="p">],</span> <span class="n">slicingPos</span><span class="p">[</span><span class="n">activeView</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+        <span class="n">slicing</span> <span class="o">=</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="n">t</span><span class="p">,</span><span class="n">t</span><span class="o">+</span><span class="mi">1</span><span class="p">),)</span> <span class="o">+</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">slicing</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="n">c</span><span class="p">,</span><span class="n">c</span><span class="o">+</span><span class="mi">1</span><span class="p">),)</span>
+
+        <span class="c">#make the labels 5d for correct graph compatibility</span>
+        <span class="n">newshape</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">labels</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">newshape</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">activeView</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">newshape</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">newshape</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        
+        
+        <span class="c">#newlabels = numpy.zeros</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dataSink</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_dataSink</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">slicing</span><span class="p">,</span> <span class="n">labels</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">newshape</span><span class="p">)))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">wroteToSink</span><span class="o">.</span><span class="n">emit</span><span class="p">()</span>
+        </div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Bernhard X. Kausler, Thorben Kröger, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

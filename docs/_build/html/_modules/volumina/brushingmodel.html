@@ -1,0 +1,256 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>volumina.brushingmodel &mdash; volumina 0.6.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../static/jquery.js"></script>
+    <script type="text/javascript" src="../../static/underscore.js"></script>
+    <script type="text/javascript" src="../../static/doctools.js"></script>
+    <link rel="top" title="volumina 0.6.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for volumina.brushingmodel</h1><div class="highlight"><pre>
+<span class="c">#!/usr/bin/env python</span>
+<span class="kn">from</span> <span class="nn">PyQt4.QtCore</span> <span class="kn">import</span> <span class="n">pyqtSignal</span><span class="p">,</span> <span class="n">QObject</span><span class="p">,</span> <span class="n">Qt</span><span class="p">,</span> <span class="n">QSize</span><span class="p">,</span> <span class="n">QPointF</span><span class="p">,</span> <span class="n">QRectF</span><span class="p">,</span> \
+                         <span class="n">QRect</span><span class="p">,</span> <span class="n">QPoint</span><span class="p">,</span> <span class="n">QSizeF</span>
+<span class="kn">from</span> <span class="nn">PyQt4.QtGui</span>  <span class="kn">import</span> <span class="n">QPen</span><span class="p">,</span> <span class="n">QGraphicsScene</span><span class="p">,</span> <span class="n">QColor</span><span class="p">,</span> \
+                         <span class="n">QImage</span><span class="p">,</span> <span class="n">QPainter</span><span class="p">,</span> <span class="n">QGraphicsLineItem</span><span class="p">,</span> <span class="n">QBrush</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span><span class="o">,</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">qimage2ndarray</span>
+
+<span class="c">#*******************************************************************************</span>
+<span class="c"># B r u s h i n g M o d e l                                                    *</span>
+<span class="c">#*******************************************************************************</span>
+
+<div class="viewcode-block" id="BrushingModel"><a class="viewcode-back" href="../../volumina.html#volumina.brushingmodel.BrushingModel">[docs]</a><span class="k">class</span> <span class="nc">BrushingModel</span><span class="p">(</span><span class="n">QObject</span><span class="p">):</span>
+    <span class="n">brushSizeChanged</span>     <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">brushColorChanged</span>    <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span><span class="n">QColor</span><span class="p">)</span>
+    <span class="n">brushStrokeAvailable</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span><span class="n">QPointF</span><span class="p">,</span> <span class="nb">object</span><span class="p">)</span>
+    <span class="n">drawnNumberChanged</span>   <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+    <span class="n">minBrushSize</span>       <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">maxBrushSize</span>       <span class="o">=</span> <span class="mi">61</span>
+    <span class="n">defaultBrushSize</span>   <span class="o">=</span> <span class="mi">3</span>
+    <span class="n">defaultDrawnNumber</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">defaultColor</span>       <span class="o">=</span> <span class="n">Qt</span><span class="o">.</span><span class="n">white</span>
+    <span class="n">erasingColor</span>       <span class="o">=</span> <span class="n">Qt</span><span class="o">.</span><span class="n">black</span>
+    <span class="n">erasingNumber</span>      <span class="o">=</span> <span class="mi">100</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">QObject</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">parent</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sliceRect</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bb</span>    <span class="o">=</span> <span class="n">QRect</span><span class="p">()</span> <span class="c">#bounding box enclosing the drawing</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">brushSize</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">defaultBrushSize</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">drawColor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">defaultColor</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_temp_color</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_temp_number</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">drawnNumber</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">defaultDrawnNumber</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">pos</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">erasing</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_hasMoved</span> <span class="o">=</span> <span class="bp">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">drawOnto</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="c">#an empty scene, where we add all drawn line segments</span>
+        <span class="c">#a QGraphicsLineItem, and which we can use to then</span>
+        <span class="c">#render to an image</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scene</span> <span class="o">=</span> <span class="n">QGraphicsScene</span><span class="p">()</span>
+
+<div class="viewcode-block" id="BrushingModel.toggleErase"><a class="viewcode-back" href="../../volumina.html#volumina.brushingmodel.BrushingModel.toggleErase">[docs]</a>    <span class="k">def</span> <span class="nf">toggleErase</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">erasing</span> <span class="o">=</span> <span class="ow">not</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">erasing</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">erasing</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setErasing</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">disableErasing</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="BrushingModel.setErasing"><a class="viewcode-back" href="../../volumina.html#volumina.brushingmodel.BrushingModel.setErasing">[docs]</a>    <span class="k">def</span> <span class="nf">setErasing</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">erasing</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_temp_color</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">drawColor</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_temp_number</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">drawnNumber</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setBrushColor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">erasingColor</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">brushColorChanged</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">erasingColor</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setDrawnNumber</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">erasingNumber</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="BrushingModel.disableErasing"><a class="viewcode-back" href="../../volumina.html#volumina.brushingmodel.BrushingModel.disableErasing">[docs]</a>    <span class="k">def</span> <span class="nf">disableErasing</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">erasing</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setBrushColor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_temp_color</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">brushColorChanged</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">drawColor</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setDrawnNumber</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_temp_number</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="BrushingModel.setBrushSize"><a class="viewcode-back" href="../../volumina.html#volumina.brushingmodel.BrushingModel.setBrushSize">[docs]</a>    <span class="k">def</span> <span class="nf">setBrushSize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">brushSize</span> <span class="o">=</span> <span class="n">size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">brushSizeChanged</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">brushSize</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="BrushingModel.setDrawnNumber"><a class="viewcode-back" href="../../volumina.html#volumina.brushingmodel.BrushingModel.setDrawnNumber">[docs]</a>    <span class="k">def</span> <span class="nf">setDrawnNumber</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">drawnNumber</span> <span class="o">=</span> <span class="n">num</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">drawnNumberChanged</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">num</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="BrushingModel.getBrushSize"><a class="viewcode-back" href="../../volumina.html#volumina.brushingmodel.BrushingModel.getBrushSize">[docs]</a>    <span class="k">def</span> <span class="nf">getBrushSize</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">brushSize</span>
+</div>
+<div class="viewcode-block" id="BrushingModel.brushSmaller"><a class="viewcode-back" href="../../volumina.html#volumina.brushingmodel.BrushingModel.brushSmaller">[docs]</a>    <span class="k">def</span> <span class="nf">brushSmaller</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">brushSize</span>
+        <span class="k">if</span> <span class="n">b</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">minBrushSize</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setBrushSize</span><span class="p">(</span><span class="n">b</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="BrushingModel.brushBigger"><a class="viewcode-back" href="../../volumina.html#volumina.brushingmodel.BrushingModel.brushBigger">[docs]</a>    <span class="k">def</span> <span class="nf">brushBigger</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">brushSize</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">brushSize</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">maxBrushSize</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setBrushSize</span><span class="p">(</span><span class="n">b</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="BrushingModel.setBrushColor"><a class="viewcode-back" href="../../volumina.html#volumina.brushingmodel.BrushingModel.setBrushColor">[docs]</a>    <span class="k">def</span> <span class="nf">setBrushColor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">color</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">drawColor</span> <span class="o">=</span> <span class="n">color</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">brushColorChanged</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">drawColor</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="BrushingModel.beginDrawing"><a class="viewcode-back" href="../../volumina.html#volumina.brushingmodel.BrushingModel.beginDrawing">[docs]</a>    <span class="k">def</span> <span class="nf">beginDrawing</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pos</span><span class="p">,</span> <span class="n">sliceRect</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+
+<span class="sd">        pos -- QPointF-like</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sliceRect</span> <span class="o">=</span> <span class="n">sliceRect</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scene</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bb</span> <span class="o">=</span> <span class="n">QRect</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pos</span> <span class="o">=</span> <span class="n">QPointF</span><span class="p">(</span><span class="n">pos</span><span class="o">.</span><span class="n">x</span><span class="p">(),</span> <span class="n">pos</span><span class="o">.</span><span class="n">y</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_hasMoved</span> <span class="o">=</span> <span class="bp">False</span>
+</div>
+<div class="viewcode-block" id="BrushingModel.endDrawing"><a class="viewcode-back" href="../../volumina.html#volumina.brushingmodel.BrushingModel.endDrawing">[docs]</a>    <span class="k">def</span> <span class="nf">endDrawing</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pos</span><span class="p">):</span>
+        <span class="n">has_moved</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hasMoved</span> <span class="c"># _hasMoved will change after calling moveTo</span>
+        <span class="k">if</span> <span class="n">has_moved</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">moveTo</span><span class="p">(</span><span class="n">pos</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">assert</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span> <span class="o">==</span> <span class="n">pos</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">moveTo</span><span class="p">(</span><span class="n">QPointF</span><span class="p">(</span><span class="n">pos</span><span class="o">.</span><span class="n">x</span><span class="p">()</span><span class="o">+</span><span class="mf">0.0001</span><span class="p">,</span> <span class="n">pos</span><span class="o">.</span><span class="n">y</span><span class="p">()</span><span class="o">+</span><span class="mf">0.0001</span><span class="p">))</span> <span class="c"># move a little</span>
+
+        <span class="n">tempi</span> <span class="o">=</span> <span class="n">QImage</span><span class="p">(</span><span class="n">QSize</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bb</span><span class="o">.</span><span class="n">width</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">bb</span><span class="o">.</span><span class="n">height</span><span class="p">()),</span> <span class="n">QImage</span><span class="o">.</span><span class="n">Format_ARGB32_Premultiplied</span><span class="p">)</span> <span class="c">#TODO: format</span>
+        <span class="n">tempi</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">painter</span> <span class="o">=</span> <span class="n">QPainter</span><span class="p">(</span><span class="n">tempi</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scene</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">painter</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="n">QRectF</span><span class="p">(),</span> <span class="n">source</span><span class="o">=</span><span class="n">QRectF</span><span class="p">(</span><span class="n">QPointF</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bb</span><span class="o">.</span><span class="n">x</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">bb</span><span class="o">.</span><span class="n">y</span><span class="p">()),</span> <span class="n">QSizeF</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bb</span><span class="o">.</span><span class="n">width</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">bb</span><span class="o">.</span><span class="n">height</span><span class="p">())))</span>
+        <span class="n">painter</span><span class="o">.</span><span class="n">end</span><span class="p">()</span>
+
+        <span class="n">ndarr</span> <span class="o">=</span> <span class="n">qimage2ndarray</span><span class="o">.</span><span class="n">rgb_view</span><span class="p">(</span><span class="n">tempi</span><span class="p">)[:,:,</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">labels</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">ndarr</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">,</span><span class="n">numpy</span><span class="o">.</span><span class="n">uint8</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">drawnNumber</span><span class="p">),</span><span class="n">numpy</span><span class="o">.</span><span class="n">uint8</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+        <span class="n">labels</span> <span class="o">=</span> <span class="n">labels</span><span class="o">.</span><span class="n">swapaxes</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">labels</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">bb</span><span class="o">.</span><span class="n">width</span><span class="p">()</span>
+        <span class="k">assert</span> <span class="n">labels</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">bb</span><span class="o">.</span><span class="n">height</span><span class="p">()</span>
+
+        <span class="c">##</span>
+        <span class="c">## ensure that at least one pixel is label when the brush size is 1</span>
+        <span class="c">##</span>
+        <span class="c">## this happens when the user just clicked without moving</span>
+        <span class="c">## in that case the lineitem will be so tiny, that it won&#39;t be rendered</span>
+        <span class="c">## into a single pixel by the code above</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">has_moved</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">brushSize</span> <span class="o">&lt;=</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">numpy</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">labels</span><span class="p">[</span><span class="n">labels</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">//</span><span class="mi">2</span><span class="p">,</span> <span class="n">labels</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">//</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">drawnNumber</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">brushStrokeAvailable</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">QPointF</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bb</span><span class="o">.</span><span class="n">x</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">bb</span><span class="o">.</span><span class="n">y</span><span class="p">()),</span> <span class="n">labels</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="BrushingModel.dumpDraw"><a class="viewcode-back" href="../../volumina.html#volumina.brushingmodel.BrushingModel.dumpDraw">[docs]</a>    <span class="k">def</span> <span class="nf">dumpDraw</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pos</span><span class="p">):</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">endDrawing</span><span class="p">(</span><span class="n">pos</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">beginDrawing</span><span class="p">(</span><span class="n">pos</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sliceRect</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">res</span>
+</div>
+<div class="viewcode-block" id="BrushingModel.moveTo"><a class="viewcode-back" href="../../volumina.html#volumina.brushingmodel.BrushingModel.moveTo">[docs]</a>    <span class="k">def</span> <span class="nf">moveTo</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pos</span><span class="p">):</span>
+        <span class="c">#data coordinates</span>
+        <span class="n">oldX</span><span class="p">,</span> <span class="n">oldY</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="o">.</span><span class="n">x</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="o">.</span><span class="n">y</span><span class="p">()</span>
+        <span class="n">x</span><span class="p">,</span><span class="n">y</span> <span class="o">=</span> <span class="n">pos</span><span class="o">.</span><span class="n">x</span><span class="p">(),</span> <span class="n">pos</span><span class="o">.</span><span class="n">y</span><span class="p">()</span>
+
+        <span class="n">line</span> <span class="o">=</span> <span class="n">QGraphicsLineItem</span><span class="p">(</span><span class="n">oldX</span><span class="p">,</span> <span class="n">oldY</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+        <span class="n">line</span><span class="o">.</span><span class="n">setPen</span><span class="p">(</span><span class="n">QPen</span><span class="p">(</span> <span class="n">QBrush</span><span class="p">(</span><span class="n">Qt</span><span class="o">.</span><span class="n">white</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">brushSize</span><span class="p">,</span> <span class="n">Qt</span><span class="o">.</span><span class="n">SolidLine</span><span class="p">,</span> <span class="n">Qt</span><span class="o">.</span><span class="n">RoundCap</span><span class="p">,</span> <span class="n">Qt</span><span class="o">.</span><span class="n">RoundJoin</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scene</span><span class="o">.</span><span class="n">addItem</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_hasMoved</span> <span class="o">=</span> <span class="bp">True</span>
+
+        <span class="c">#update bounding Box</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">bb</span><span class="o">.</span><span class="n">isValid</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">bb</span> <span class="o">=</span> <span class="n">QRect</span><span class="p">(</span><span class="n">QPoint</span><span class="p">(</span><span class="n">oldX</span><span class="p">,</span><span class="n">oldY</span><span class="p">),</span> <span class="n">QSize</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">))</span>
+        <span class="c">#grow bounding box</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bb</span><span class="o">.</span><span class="n">setLeft</span><span class="p">(</span>  <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bb</span><span class="o">.</span><span class="n">left</span><span class="p">(),</span>   <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span>                   <span class="n">x</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">brushSize</span><span class="o">/</span><span class="mi">2</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">)</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bb</span><span class="o">.</span><span class="n">setRight</span><span class="p">(</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bb</span><span class="o">.</span><span class="n">right</span><span class="p">(),</span>  <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliceRect</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">x</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">brushSize</span><span class="o">/</span><span class="mi">2</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="p">)</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bb</span><span class="o">.</span><span class="n">setTop</span><span class="p">(</span>   <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bb</span><span class="o">.</span><span class="n">top</span><span class="p">(),</span>    <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span>                   <span class="n">y</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">brushSize</span><span class="o">/</span><span class="mi">2</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">)</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bb</span><span class="o">.</span><span class="n">setBottom</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bb</span><span class="o">.</span><span class="n">bottom</span><span class="p">(),</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sliceRect</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">y</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">brushSize</span><span class="o">/</span><span class="mi">2</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="p">)</span> <span class="p">)</span>
+
+        <span class="c">#update/move position</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pos</span> <span class="o">=</span> <span class="n">pos</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Bernhard X. Kausler, Thorben Kröger, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,590 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>volumina.layer &mdash; volumina 0.6.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../static/jquery.js"></script>
+    <script type="text/javascript" src="../../static/underscore.js"></script>
+    <script type="text/javascript" src="../../static/doctools.js"></script>
+    <link rel="top" title="volumina 0.6.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for volumina.layer</h1><div class="highlight"><pre>
+<span class="kn">import</span> <span class="nn">colorsys</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+
+<span class="kn">from</span> <span class="nn">PyQt4.QtCore</span> <span class="kn">import</span> <span class="n">QObject</span><span class="p">,</span> <span class="n">pyqtSignal</span>
+<span class="kn">from</span> <span class="nn">PyQt4.QtGui</span> <span class="kn">import</span> <span class="n">QColor</span>
+
+<span class="kn">from</span> <span class="nn">volumina.interpreter</span> <span class="kn">import</span> <span class="n">ClickInterpreter</span>
+<span class="kn">from</span> <span class="nn">volumina.pixelpipeline.asyncabcs</span> <span class="kn">import</span> <span class="n">SourceABC</span>
+<span class="kn">from</span> <span class="nn">volumina.pixelpipeline.datasources</span> <span class="kn">import</span> <span class="n">MinMaxSource</span> 
+
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+
+<span class="c">#*******************************************************************************</span>
+<span class="c"># L a y e r                                                                    *</span>
+<span class="c">#*******************************************************************************</span>
+
+<div class="viewcode-block" id="Layer"><a class="viewcode-back" href="../../volumina.html#volumina.layer.Layer">[docs]</a><span class="k">class</span> <span class="nc">Layer</span><span class="p">(</span> <span class="n">QObject</span> <span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    properties:</span>
+<span class="sd">    datasources -- list of ArraySourceABC; read-only</span>
+<span class="sd">    visible -- boolean</span>
+<span class="sd">    opacity -- float; range 0.0 - 1.0</span>
+<span class="sd">    name -- string</span>
+<span class="sd">    numberOfChannels -- int</span>
+<span class="sd">    layerId -- any object that can uniquely identify this layer within a layerstack (by default, same as name)</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="sd">&#39;&#39;&#39;changed is emitted whenever one of the more specialized</span>
+<span class="sd">    somethingChanged signals is emitted.&#39;&#39;&#39;</span>
+    <span class="n">changed</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">()</span>
+
+    <span class="n">visibleChanged</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span> 
+    <span class="n">opacityChanged</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span> 
+    <span class="n">nameChanged</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span><span class="nb">object</span><span class="p">)</span>
+    <span class="n">channelChanged</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">numberOfChannelsChanged</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">visible</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_visible</span>
+    <span class="nd">@visible.setter</span>
+<div class="viewcode-block" id="Layer.visible"><a class="viewcode-back" href="../../volumina.html#volumina.layer.Layer.visible">[docs]</a>    <span class="k">def</span> <span class="nf">visible</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">value</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_visible</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_allowToggleVisible</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_visible</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">visibleChanged</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span> <span class="n">value</span> <span class="p">)</span>
+    </div>
+<div class="viewcode-block" id="Layer.toggleVisible"><a class="viewcode-back" href="../../volumina.html#volumina.layer.Layer.toggleVisible">[docs]</a>    <span class="k">def</span> <span class="nf">toggleVisible</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Convenience function.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_allowToggleVisible</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">visible</span> <span class="o">=</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_visible</span>
+</div>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">opacity</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_opacity</span>
+    <span class="nd">@opacity.setter</span>
+<div class="viewcode-block" id="Layer.opacity"><a class="viewcode-back" href="../../volumina.html#volumina.layer.Layer.opacity">[docs]</a>    <span class="k">def</span> <span class="nf">opacity</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">value</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_opacity</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_opacity</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">opacityChanged</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span> <span class="n">value</span> <span class="p">)</span>
+            </div>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">name</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span>
+    <span class="nd">@name.setter</span>
+<div class="viewcode-block" id="Layer.name"><a class="viewcode-back" href="../../volumina.html#volumina.layer.Layer.name">[docs]</a>    <span class="k">def</span> <span class="nf">name</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">n</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span> <span class="o">!=</span> <span class="n">n</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_name</span> <span class="o">=</span> <span class="n">n</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">nameChanged</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+</div>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">numberOfChannels</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_numberOfChannels</span>
+    <span class="nd">@numberOfChannels.setter</span>
+<div class="viewcode-block" id="Layer.numberOfChannels"><a class="viewcode-back" href="../../volumina.html#volumina.layer.Layer.numberOfChannels">[docs]</a>    <span class="k">def</span> <span class="nf">numberOfChannels</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">n</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_numberOfChannels</span> <span class="o">==</span> <span class="n">n</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_channel</span> <span class="o">&gt;=</span> <span class="n">n</span> <span class="ow">and</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">channel</span> <span class="o">=</span> <span class="n">n</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="k">elif</span> <span class="n">n</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Layer.numberOfChannels(): should be greater or equal 1&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_numberOfChannels</span> <span class="o">=</span> <span class="n">n</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">numberOfChannelsChanged</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+</div>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">channel</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_channel</span>
+    
+    <span class="nd">@channel.setter</span>
+<div class="viewcode-block" id="Layer.channel"><a class="viewcode-back" href="../../volumina.html#volumina.layer.Layer.channel">[docs]</a>    <span class="k">def</span> <span class="nf">channel</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">n</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_channel</span> <span class="o">==</span> <span class="n">n</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">numberOfChannels</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_channel</span> <span class="o">=</span> <span class="n">n</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Layer.channel.setter: channel value has to be less than number of channels&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channelChanged</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_channel</span> <span class="p">)</span> 
+</div>
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="Layer.datasources"><a class="viewcode-back" href="../../volumina.html#volumina.layer.Layer.datasources">[docs]</a>    <span class="k">def</span> <span class="nf">datasources</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_datasources</span>
+</div>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">layerId</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="c"># If we have no real id, use the name</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layerId</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layerId</span>
+    
+    <span class="nd">@layerId.setter</span>
+<div class="viewcode-block" id="Layer.layerId"><a class="viewcode-back" href="../../volumina.html#volumina.layer.Layer.layerId">[docs]</a>    <span class="k">def</span> <span class="nf">layerId</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">lid</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_layerId</span> <span class="o">=</span> <span class="n">lid</span>
+</div>
+<div class="viewcode-block" id="Layer.setActive"><a class="viewcode-back" href="../../volumina.html#volumina.layer.Layer.setActive">[docs]</a>    <span class="k">def</span> <span class="nf">setActive</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">active</span> <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;This function is called whenever the layer is selected (active = True) or deselected (active = False)</span>
+<span class="sd">           by the user.</span>
+<span class="sd">           As an example, this can be used to enable a specific event interpreter when the layer is active</span>
+<span class="sd">           and to disable it when it is not active.</span>
+<span class="sd">           See ClickableColortableLayer for an example.&quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="Layer.timePerTile"><a class="viewcode-back" href="../../volumina.html#volumina.layer.Layer.timePerTile">[docs]</a>    <span class="k">def</span> <span class="nf">timePerTile</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">timeSec</span><span class="p">,</span> <span class="n">tileRect</span> <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Update the average time per tile with new data: the tile of size tileRect took timeSec seonds&quot;&quot;&quot;</span>
+        <span class="c">#compute cumulative moving average</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_numTiles</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">averageTimePerTile</span> <span class="o">=</span> <span class="p">(</span><span class="n">timeSec</span> <span class="o">+</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_numTiles</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">averageTimePerTile</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">_numTiles</span>
+</div>
+<div class="viewcode-block" id="Layer.toolTip"><a class="viewcode-back" href="../../volumina.html#volumina.layer.Layer.toolTip">[docs]</a>    <span class="k">def</span> <span class="nf">toolTip</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_toolTip</span>
+</div>
+<div class="viewcode-block" id="Layer.setToolTip"><a class="viewcode-back" href="../../volumina.html#volumina.layer.Layer.setToolTip">[docs]</a>    <span class="k">def</span> <span class="nf">setToolTip</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tip</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_toolTip</span> <span class="o">=</span> <span class="n">tip</span>
+        </div>
+<div class="viewcode-block" id="Layer.isDifferentEnough"><a class="viewcode-back" href="../../volumina.html#volumina.layer.Layer.isDifferentEnough">[docs]</a>    <span class="k">def</span> <span class="nf">isDifferentEnough</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other_layer</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;This ugly function is here to support the updateAllLayers function in the layerViewerGui in ilastik&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">other_layer</span><span class="o">.</span><span class="n">datasources</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">datasources</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">if</span> <span class="n">other_layer</span><span class="o">.</span><span class="n">numberOfChannels</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">numberOfChannels</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">return</span> <span class="bp">False</span>
+</div>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">datasources</span><span class="p">,</span> <span class="n">direct</span><span class="o">=</span><span class="bp">False</span> <span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Layer</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_name</span> <span class="o">=</span> <span class="s">&quot;Unnamed Layer&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_visible</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_opacity</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_datasources</span> <span class="o">=</span> <span class="n">datasources</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_layerId</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_numberOfChannels</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_allowToggleVisible</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_channel</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">direct</span> <span class="o">=</span> <span class="n">direct</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_toolTip</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cleaned_up</span> <span class="o">=</span> <span class="bp">False</span>
+
+        <span class="k">for</span> <span class="n">datasource</span> <span class="ow">in</span> <span class="nb">filter</span><span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_datasources</span><span class="p">):</span>
+            <span class="n">datasource</span><span class="o">.</span><span class="n">numberOfChannelsChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_updateNumberOfChannels</span> <span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">direct</span><span class="p">:</span>
+            <span class="c">#in direct mode, we calculate the average time per tile for debug purposes</span>
+            <span class="c">#this is useful to identify which of your layers cause slowness</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">averageTimePerTile</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_numTiles</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">visibleChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">changed</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opacityChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">changed</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nameChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">changed</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">numberOfChannelsChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">changed</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channelChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">changed</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">contexts</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span> <span class="nf">_updateNumberOfChannels</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">newchannels</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_datasources</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">numberOfChannels</span>
+        <span class="k">for</span> <span class="n">datasource</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_datasources</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+            <span class="n">newchannels</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span> <span class="n">datasource</span><span class="o">.</span><span class="n">numberOfChannels</span><span class="p">,</span> <span class="n">newchannels</span> <span class="p">)</span>
+        <span class="k">if</span> <span class="n">newchannels</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">numberOfChannels</span><span class="p">:</span>
+            <span class="c"># Update property (emits signal)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">numberOfChannels</span> <span class="o">=</span> <span class="n">newchannels</span>
+
+<div class="viewcode-block" id="Layer.clean_up"><a class="viewcode-back" href="../../volumina.html#volumina.layer.Layer.clean_up">[docs]</a>    <span class="k">def</span> <span class="nf">clean_up</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Cleans up resources in this layer&#39;s datasources.</span>
+<span class="sd">        Must not be called more than once.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cleaned_up</span><span class="p">,</span> <span class="s">&quot;Bug: You&#39;re attempting to clean layer {} twice.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="p">)</span>
+        <span class="k">for</span> <span class="n">src</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">datasources</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">src</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">src</span><span class="o">.</span><span class="n">clean_up</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cleaned_up</span> <span class="o">=</span> <span class="bp">True</span>
+
+        
+<span class="c">#*******************************************************************************</span>
+<span class="c"># C l i c k a b l e L a y e r                                                  *</span>
+<span class="c">#*******************************************************************************</span>
+</div></div>
+<div class="viewcode-block" id="ClickableLayer"><a class="viewcode-back" href="../../volumina.html#volumina.layer.ClickableLayer">[docs]</a><span class="k">class</span> <span class="nc">ClickableLayer</span><span class="p">(</span> <span class="n">Layer</span> <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;A layer that, when being activated/selected, switches to an interpreter than can intercept</span>
+<span class="sd">       right click events&quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">datasource</span><span class="p">,</span> <span class="n">editor</span><span class="p">,</span> <span class="n">clickFunctor</span><span class="p">,</span> <span class="n">direct</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="bp">True</span> <span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ClickableLayer</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">([</span><span class="n">datasource</span><span class="p">],</span> <span class="n">direct</span><span class="o">=</span><span class="n">direct</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_editor</span> <span class="o">=</span> <span class="n">editor</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clickInterpreter</span> <span class="o">=</span> <span class="n">ClickInterpreter</span><span class="p">(</span><span class="n">editor</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="n">clickFunctor</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="n">right</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_inactiveInterpreter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_editor</span><span class="o">.</span><span class="n">eventSwitch</span><span class="o">.</span><span class="n">interpreter</span>
+    
+<div class="viewcode-block" id="ClickableLayer.setActive"><a class="viewcode-back" href="../../volumina.html#volumina.layer.ClickableLayer.setActive">[docs]</a>    <span class="k">def</span> <span class="nf">setActive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">active</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">active</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_editor</span><span class="o">.</span><span class="n">eventSwitch</span><span class="o">.</span><span class="n">interpreter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_clickInterpreter</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_editor</span><span class="o">.</span><span class="n">eventSwitch</span><span class="o">.</span><span class="n">interpreter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_inactiveInterpreter</span>
+
+<span class="c">#*******************************************************************************</span>
+<span class="c"># N o r m a l i z a b l e L a y e r                                            *</span>
+<span class="c">#*******************************************************************************</span>
+</div></div>
+<div class="viewcode-block" id="dtype_to_default_normalize"><a class="viewcode-back" href="../../volumina.html#volumina.layer.dtype_to_default_normalize">[docs]</a><span class="k">def</span> <span class="nf">dtype_to_default_normalize</span><span class="p">(</span><span class="n">dsource</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">dsource</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">dtype</span> <span class="o">=</span> <span class="n">dsource</span><span class="o">.</span><span class="n">dtype</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">dtype</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">uint8</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dtype</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">dtype</span><span class="p">):</span>
+        <span class="n">dtype</span> <span class="o">=</span> <span class="n">dtype</span><span class="o">.</span><span class="n">type</span>
+    <span class="k">if</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">dtype</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">long</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">integer</span><span class="p">)):</span>
+        <span class="n">normalize</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">iinfo</span><span class="p">(</span><span class="n">dtype</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">dtype</span> <span class="o">==</span> <span class="n">numpy</span><span class="o">.</span><span class="n">float32</span><span class="p">:</span>
+        <span class="n">normalize</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">255</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">dtype</span> <span class="ow">is</span> <span class="nb">float</span> <span class="ow">or</span> <span class="n">dtype</span> <span class="o">==</span> <span class="n">numpy</span><span class="o">.</span><span class="n">float64</span><span class="p">:</span>
+        <span class="n">normalize</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">255</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">normalize</span>
+    </div>
+<div class="viewcode-block" id="NormalizableLayer"><a class="viewcode-back" href="../../volumina.html#volumina.layer.NormalizableLayer">[docs]</a><span class="k">class</span> <span class="nc">NormalizableLayer</span><span class="p">(</span> <span class="n">Layer</span> <span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    int -- datasource index</span>
+<span class="sd">    int -- lower threshold</span>
+<span class="sd">    int -- upper threshold</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">normalizeChanged</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span>
+
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    int -- datasource index</span>
+<span class="sd">    int -- minimum</span>
+<span class="sd">    int -- maximum</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">rangeChanged</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="NormalizableLayer.range"><a class="viewcode-back" href="../../volumina.html#volumina.layer.NormalizableLayer.range">[docs]</a>    <span class="k">def</span> <span class="nf">range</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_range</span>
+</div>
+<div class="viewcode-block" id="NormalizableLayer.set_range"><a class="viewcode-back" href="../../volumina.html#volumina.layer.NormalizableLayer.set_range">[docs]</a>    <span class="k">def</span> <span class="nf">set_range</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">datasourceIdx</span><span class="p">,</span> <span class="n">value</span> <span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        value -- (rmin, rmax)</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_range</span><span class="p">[</span><span class="n">datasourceIdx</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_range</span><span class="p">[</span><span class="n">datasourceIdx</span><span class="p">]</span> <span class="o">=</span> <span class="n">dtype_to_default_normalize</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_datasources</span><span class="p">[</span><span class="n">datasourceIdx</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rangeChanged</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">datasourceIdx</span><span class="p">,</span> <span class="n">value</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">value</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    </div>
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="NormalizableLayer.normalize"><a class="viewcode-back" href="../../volumina.html#volumina.layer.NormalizableLayer.normalize">[docs]</a>    <span class="k">def</span> <span class="nf">normalize</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span>
+</div>
+<div class="viewcode-block" id="NormalizableLayer.set_normalize"><a class="viewcode-back" href="../../volumina.html#volumina.layer.NormalizableLayer.set_normalize">[docs]</a>    <span class="k">def</span> <span class="nf">set_normalize</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">datasourceIdx</span><span class="p">,</span> <span class="n">value</span> <span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        value -- (nmin, nmax)</span>
+<span class="sd">        value -- None : grabs (min, max) from the MinMaxSource</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_datasources</span><span class="p">[</span><span class="n">datasourceIdx</span><span class="p">]</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span>
+        
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_datasources</span><span class="p">[</span><span class="n">datasourceIdx</span><span class="p">]</span><span class="o">.</span><span class="n">_bounds</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_autoMinMax</span><span class="p">[</span><span class="n">datasourceIdx</span><span class="p">]</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="bp">False</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_range</span><span class="p">[</span><span class="n">datasourceIdx</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_autoMinMax</span><span class="p">[</span><span class="n">datasourceIdx</span><span class="p">]</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_autoMinMax</span><span class="p">[</span><span class="n">datasourceIdx</span><span class="p">]</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span><span class="p">[</span><span class="n">datasourceIdx</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span> 
+        <span class="bp">self</span><span class="o">.</span><span class="n">normalizeChanged</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">datasourceIdx</span><span class="p">,</span> <span class="n">value</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">value</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+</div>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">datasources</span><span class="p">,</span> <span class="nb">range</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">normalize</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">direct</span><span class="o">=</span><span class="bp">False</span> <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        datasources - a list of raw data sources</span>
+<span class="sd">        range - Not sure.  I think this parameter should be removed.</span>
+<span class="sd">        normalize - If normalize is a tuple (dmin, dmax), the data is normalized from (dmin, dmax) to (0,255) before it is displayed.</span>
+<span class="sd">                    If normalize=None, then (dmin, dmax) is automatically determined before normalization.</span>
+<span class="sd">                    If normalize=False, then no normalization is applied before displaying the data.</span>
+<span class="sd">        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_range</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_autoMinMax</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_mmSources</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="n">wrapped_datasources</span> <span class="o">=</span> <span class="p">[</span><span class="bp">None</span><span class="p">]</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span> <span class="n">datasources</span> <span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">datasource</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">datasources</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">datasource</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_autoMinMax</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">normalize</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">)</span> <span class="c"># Don&#39;t auto-set normalization if the caller provided one.</span>
+                <span class="n">mmSource</span> <span class="o">=</span> <span class="n">MinMaxSource</span><span class="p">(</span><span class="n">datasource</span><span class="p">)</span>
+                <span class="n">mmSource</span><span class="o">.</span><span class="n">boundsChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_bounds_changed</span><span class="p">,</span> <span class="n">i</span><span class="p">))</span>
+                <span class="n">wrapped_datasources</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">mmSource</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_mmSources</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mmSource</span><span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">NormalizableLayer</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">wrapped_datasources</span><span class="p">,</span> <span class="n">direct</span><span class="o">=</span><span class="n">direct</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">datasource</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">datasources</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">datasource</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">normalize</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_range</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">range</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">set_range</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="nb">range</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">set_normalize</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">normalize</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_range</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_autoMinMax</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">rangeChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">changed</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">normalizeChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">changed</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_bounds_changed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">datasourceIdx</span><span class="p">,</span> <span class="nb">range</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_autoMinMax</span><span class="p">[</span><span class="n">datasourceIdx</span><span class="p">]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_normalize</span><span class="p">(</span><span class="n">datasourceIdx</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+
+<div class="viewcode-block" id="NormalizableLayer.resetBounds"><a class="viewcode-back" href="../../volumina.html#volumina.layer.NormalizableLayer.resetBounds">[docs]</a>    <span class="k">def</span> <span class="nf">resetBounds</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">mm</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mmSources</span><span class="p">:</span>
+            <span class="n">mm</span><span class="o">.</span><span class="n">resetBounds</span><span class="p">()</span>
+
+
+<span class="c">#*******************************************************************************</span>
+<span class="c"># G r a y s c a l e L a y e r                                                  *</span>
+<span class="c">#*******************************************************************************</span>
+</div></div>
+<div class="viewcode-block" id="GrayscaleLayer"><a class="viewcode-back" href="../../volumina.html#volumina.layer.GrayscaleLayer">[docs]</a><span class="k">class</span> <span class="nc">GrayscaleLayer</span><span class="p">(</span> <span class="n">NormalizableLayer</span> <span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">datasource</span><span class="p">,</span> <span class="nb">range</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">normalize</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">direct</span><span class="o">=</span><span class="bp">False</span> <span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">datasource</span><span class="p">,</span> <span class="n">SourceABC</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">GrayscaleLayer</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">([</span><span class="n">datasource</span><span class="p">],</span> <span class="nb">range</span><span class="p">,</span> <span class="n">normalize</span><span class="p">,</span> <span class="n">direct</span><span class="o">=</span><span class="n">direct</span><span class="p">)</span>
+
+<span class="c">#*******************************************************************************</span>
+<span class="c"># A l p h a M o d u l a t e d L a y e r                                        *</span>
+<span class="c">#*******************************************************************************</span>
+</div>
+<div class="viewcode-block" id="AlphaModulatedLayer"><a class="viewcode-back" href="../../volumina.html#volumina.layer.AlphaModulatedLayer">[docs]</a><span class="k">class</span> <span class="nc">AlphaModulatedLayer</span><span class="p">(</span> <span class="n">NormalizableLayer</span> <span class="p">):</span>
+    <span class="n">tintColorChanged</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">()</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">tintColor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tintColor</span>
+    <span class="nd">@tintColor.setter</span>
+<div class="viewcode-block" id="AlphaModulatedLayer.tintColor"><a class="viewcode-back" href="../../volumina.html#volumina.layer.AlphaModulatedLayer.tintColor">[docs]</a>    <span class="k">def</span> <span class="nf">tintColor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">c</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tintColor</span> <span class="o">!=</span> <span class="n">c</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_tintColor</span> <span class="o">=</span> <span class="n">c</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tintColorChanged</span><span class="o">.</span><span class="n">emit</span><span class="p">()</span>
+    </div>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">datasource</span><span class="p">,</span> <span class="n">tintColor</span> <span class="o">=</span> <span class="n">QColor</span><span class="p">(</span><span class="mi">255</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span> <span class="nb">range</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">255</span><span class="p">),</span> <span class="n">normalize</span> <span class="o">=</span> <span class="bp">None</span> <span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">datasource</span><span class="p">,</span> <span class="n">SourceABC</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">AlphaModulatedLayer</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">([</span><span class="n">datasource</span><span class="p">],</span> <span class="nb">range</span><span class="p">,</span> <span class="n">normalize</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tintColor</span> <span class="o">=</span> <span class="n">tintColor</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tintColorChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">changed</span><span class="p">)</span>
+        
+<span class="c">#*******************************************************************************</span>
+<span class="c"># C o l o r t a b l e L a y e r                                                *</span>
+<span class="c">#*******************************************************************************</span>
+</div>
+<div class="viewcode-block" id="generateRandomColors"><a class="viewcode-back" href="../../volumina.html#volumina.layer.generateRandomColors">[docs]</a><span class="k">def</span> <span class="nf">generateRandomColors</span><span class="p">(</span><span class="n">M</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">colormodel</span><span class="o">=</span><span class="s">&quot;hsv&quot;</span><span class="p">,</span> <span class="n">clamp</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">zeroIsTransparent</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Generate a colortable with M entries.</span>
+<span class="sd">       colormodel: currently only &#39;hsv&#39; is supported</span>
+<span class="sd">       clamp:      A dictionary stating which parameters of the color in the colormodel are clamped to a certain</span>
+<span class="sd">                   value. For example: clamp = {&#39;v&#39;: 1.0} will ensure that the value of any generated</span>
+<span class="sd">                   HSV color is 1.0. All other parameters (h,s in the example) are selected randomly</span>
+<span class="sd">                   to lie uniformly in the allowed range. &quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">((</span><span class="n">M</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">clamp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">clamp</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            <span class="n">idx</span> <span class="o">=</span> <span class="n">colormodel</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+            <span class="n">r</span><span class="p">[:,</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+
+    <span class="n">colors</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">colormodel</span> <span class="o">==</span> <span class="s">&quot;hsv&quot;</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">M</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">zeroIsTransparent</span> <span class="ow">and</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">colors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">QColor</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">rgba</span><span class="p">())</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">h</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">v</span> <span class="o">=</span> <span class="n">r</span><span class="p">[</span><span class="n">i</span><span class="p">,:]</span> 
+                <span class="n">color</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">colorsys</span><span class="o">.</span><span class="n">hsv_to_rgb</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">v</span><span class="p">))</span> <span class="o">*</span> <span class="mi">255</span>
+                <span class="n">qColor</span> <span class="o">=</span> <span class="n">QColor</span><span class="p">(</span><span class="o">*</span><span class="n">color</span><span class="p">)</span>
+                <span class="n">colors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">qColor</span><span class="o">.</span><span class="n">rgba</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">colors</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s">&quot;unknown color model &#39;</span><span class="si">%s</span><span class="s">&#39;&quot;</span> <span class="o">%</span> <span class="n">colormodel</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="ColortableLayer"><a class="viewcode-back" href="../../volumina.html#volumina.layer.ColortableLayer">[docs]</a><span class="k">class</span> <span class="nc">ColortableLayer</span><span class="p">(</span> <span class="n">NormalizableLayer</span> <span class="p">):</span>
+    <span class="n">colorTableChanged</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">()</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">colorTable</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_colorTable</span>
+
+    <span class="nd">@colorTable.setter</span>
+<div class="viewcode-block" id="ColortableLayer.colorTable"><a class="viewcode-back" href="../../volumina.html#volumina.layer.ColortableLayer.colorTable">[docs]</a>    <span class="k">def</span> <span class="nf">colorTable</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">colorTable</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_colorTable</span> <span class="o">=</span> <span class="n">colorTable</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">colorTableChanged</span><span class="o">.</span><span class="n">emit</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="ColortableLayer.randomizeColors"><a class="viewcode-back" href="../../volumina.html#volumina.layer.ColortableLayer.randomizeColors">[docs]</a>    <span class="k">def</span> <span class="nf">randomizeColors</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">colorTable</span> <span class="o">=</span> <span class="n">generateRandomColors</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_colorTable</span><span class="p">),</span> <span class="s">&quot;hsv&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s">&quot;v&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">},</span> <span class="bp">True</span><span class="p">)</span>
+        </div>
+<div class="viewcode-block" id="ColortableLayer.isDifferentEnough"><a class="viewcode-back" href="../../volumina.html#volumina.layer.ColortableLayer.isDifferentEnough">[docs]</a>    <span class="k">def</span> <span class="nf">isDifferentEnough</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other_layer</span><span class="p">):</span>
+            
+        <span class="k">if</span> <span class="n">other_layer</span><span class="o">.</span><span class="n">_colorTable</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_colorTable</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">if</span> <span class="n">other_layer</span><span class="o">.</span><span class="n">datasources</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">datasources</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">return</span> <span class="bp">False</span>
+        
+</div>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">datasource</span> <span class="p">,</span> <span class="n">colorTable</span><span class="p">,</span> <span class="n">normalize</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">direct</span><span class="o">=</span><span class="bp">False</span> <span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">datasource</span><span class="p">,</span> <span class="n">SourceABC</span><span class="p">)</span>
+        
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        By default, no normalization is performed on ColortableLayers.  </span>
+<span class="sd">        If the normalize parameter is set to &#39;auto&#39;, </span>
+<span class="sd">        your data will be automatically normalized to the length of your colorable.  </span>
+<span class="sd">        If a tuple (dmin, dmax) is passed, this specifies the range of your data, </span>
+<span class="sd">        which is used to normalize the data before the colorable is applied.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+
+        <span class="k">if</span> <span class="n">normalize</span> <span class="ow">is</span> <span class="s">&#39;auto&#39;</span><span class="p">:</span>
+            <span class="n">normalize</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="nb">range</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">colorTable</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ColortableLayer</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">([</span><span class="n">datasource</span><span class="p">],</span> <span class="nb">range</span> <span class="o">=</span> <span class="nb">range</span><span class="p">,</span> <span class="n">normalize</span><span class="o">=</span><span class="n">normalize</span><span class="p">,</span> <span class="n">direct</span><span class="o">=</span><span class="n">direct</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">datasource</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_colorTable</span> <span class="o">=</span> <span class="n">colorTable</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">colortableIsRandom</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">zeroIsTransparent</span>  <span class="o">=</span> <span class="bp">False</span>
+        </div>
+<div class="viewcode-block" id="ClickableColortableLayer"><a class="viewcode-back" href="../../volumina.html#volumina.layer.ClickableColortableLayer">[docs]</a><span class="k">class</span> <span class="nc">ClickableColortableLayer</span><span class="p">(</span><span class="n">ClickableLayer</span><span class="p">):</span>
+    <span class="n">colorTableChanged</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">()</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">editor</span><span class="p">,</span> <span class="n">clickFunctor</span><span class="p">,</span> <span class="n">datasource</span> <span class="p">,</span> <span class="n">colorTable</span><span class="p">,</span> <span class="n">direct</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="bp">True</span> <span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">datasource</span><span class="p">,</span> <span class="n">SourceABC</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ClickableColortableLayer</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">datasource</span><span class="p">,</span> <span class="n">editor</span><span class="p">,</span> <span class="n">clickFunctor</span><span class="p">,</span> <span class="n">direct</span><span class="o">=</span><span class="n">direct</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="n">right</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_colorTable</span> <span class="o">=</span> <span class="n">colorTable</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">datasource</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">colortableIsRandom</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">zeroIsTransparent</span>  <span class="o">=</span> <span class="bp">False</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">colorTable</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_colorTable</span>
+
+    <span class="nd">@colorTable.setter</span>
+<div class="viewcode-block" id="ClickableColortableLayer.colorTable"><a class="viewcode-back" href="../../volumina.html#volumina.layer.ClickableColortableLayer.colorTable">[docs]</a>    <span class="k">def</span> <span class="nf">colorTable</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">colorTable</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_colorTable</span> <span class="o">=</span> <span class="n">colorTable</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">colorTableChanged</span><span class="o">.</span><span class="n">emit</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="ClickableColortableLayer.randomizeColors"><a class="viewcode-back" href="../../volumina.html#volumina.layer.ClickableColortableLayer.randomizeColors">[docs]</a>    <span class="k">def</span> <span class="nf">randomizeColors</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">colorTable</span> <span class="o">=</span> <span class="n">generateRandomColors</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_colorTable</span><span class="p">),</span> <span class="s">&quot;hsv&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s">&quot;v&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">},</span> <span class="bp">True</span><span class="p">)</span>
+
+<span class="c">#*******************************************************************************</span>
+<span class="c"># R G B A L a y e r                                                            *</span>
+<span class="c">#*******************************************************************************</span>
+</div></div>
+<div class="viewcode-block" id="RGBALayer"><a class="viewcode-back" href="../../volumina.html#volumina.layer.RGBALayer">[docs]</a><span class="k">class</span> <span class="nc">RGBALayer</span><span class="p">(</span> <span class="n">NormalizableLayer</span> <span class="p">):</span>
+    <span class="n">channelIdx</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;red&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s">&#39;green&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s">&#39;blue&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s">&#39;alpha&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">}</span>
+    <span class="n">channelName</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="s">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="s">&#39;green&#39;</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span> <span class="s">&#39;blue&#39;</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span> <span class="s">&#39;alpha&#39;</span><span class="p">}</span>
+    
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="RGBALayer.color_missing_value"><a class="viewcode-back" href="../../volumina.html#volumina.layer.RGBALayer.color_missing_value">[docs]</a>    <span class="k">def</span> <span class="nf">color_missing_value</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_color_missing_value</span>
+</div>
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="RGBALayer.alpha_missing_value"><a class="viewcode-back" href="../../volumina.html#volumina.layer.RGBALayer.alpha_missing_value">[docs]</a>    <span class="k">def</span> <span class="nf">alpha_missing_value</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_alpha_missing_value</span>
+</div>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">red</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">green</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">blue</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">alpha</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> \
+                  <span class="n">color_missing_value</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">alpha_missing_value</span> <span class="o">=</span> <span class="mi">255</span><span class="p">,</span>
+                  <span class="nb">range</span> <span class="o">=</span> <span class="p">(</span><span class="bp">None</span><span class="p">,)</span><span class="o">*</span><span class="mi">4</span><span class="p">,</span>
+                  <span class="n">normalizeR</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">normalizeG</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">normalizeB</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">normalizeA</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="n">red</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">red</span><span class="p">,</span> <span class="n">SourceABC</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">green</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">green</span><span class="p">,</span> <span class="n">SourceABC</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">blue</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">blue</span><span class="p">,</span> <span class="n">SourceABC</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">alpha</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">SourceABC</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">RGBALayer</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">([</span><span class="n">red</span><span class="p">,</span><span class="n">green</span><span class="p">,</span><span class="n">blue</span><span class="p">,</span><span class="n">alpha</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_color_missing_value</span> <span class="o">=</span> <span class="n">color_missing_value</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_alpha_missing_value</span> <span class="o">=</span> <span class="n">alpha_missing_value</span>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="RGBALayer.createFromMultichannel"><a class="viewcode-back" href="../../volumina.html#volumina.layer.RGBALayer.createFromMultichannel">[docs]</a>    <span class="k">def</span> <span class="nf">createFromMultichannel</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="c"># disect data</span>
+        <span class="n">l</span> <span class="o">=</span> <span class="n">RGBALayer</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">l</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Bernhard X. Kausler, Thorben Kröger, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

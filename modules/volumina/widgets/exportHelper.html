@@ -1,0 +1,219 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>volumina.widgets.exportHelper &mdash; volumina 0.6.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../../static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../static/jquery.js"></script>
+    <script type="text/javascript" src="../../../static/underscore.js"></script>
+    <script type="text/javascript" src="../../../static/doctools.js"></script>
+    <link rel="top" title="volumina 0.6.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for volumina.widgets.exportHelper</h1><div class="highlight"><pre>
+<span class="c">#Python</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+
+<span class="c">#Qt</span>
+<span class="kn">from</span> <span class="nn">PyQt4.QtCore</span> <span class="kn">import</span> <span class="n">pyqtSignal</span><span class="p">,</span> <span class="n">QObject</span>
+<span class="kn">from</span> <span class="nn">PyQt4.QtGui</span> <span class="kn">import</span> <span class="n">QMessageBox</span>
+
+<span class="c">#volumina</span>
+<span class="kn">from</span> <span class="nn">dataExportOptionsDlg</span> <span class="kn">import</span> <span class="n">DataExportOptionsDlg</span>
+<span class="kn">from</span> <span class="nn">multiStepProgressDialog</span> <span class="kn">import</span> <span class="n">MultiStepProgressDialog</span>
+
+<span class="c">###</span>
+<span class="c">### lazyflow</span>
+<span class="c">###</span>
+<span class="n">_has_lazyflow</span> <span class="o">=</span> <span class="bp">True</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">lazyflow.graph</span> <span class="kn">import</span> <span class="n">Graph</span>
+    <span class="kn">from</span> <span class="nn">lazyflow.request</span> <span class="kn">import</span> <span class="n">Request</span>
+<span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="n">exceptStr</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+    <span class="n">_has_lazyflow</span> <span class="o">=</span> <span class="bp">False</span>
+
+
+<div class="viewcode-block" id="get_settings_and_export_layer"><a class="viewcode-back" href="../../../volumina.widgets.html#volumina.widgets.exportHelper.get_settings_and_export_layer">[docs]</a><span class="k">def</span> <span class="nf">get_settings_and_export_layer</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="n">parent_widget</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Prompt the user for layer export settings, and perform the layer export.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">sourceTags</span> <span class="o">=</span> <span class="p">[</span><span class="bp">True</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">layer</span><span class="o">.</span><span class="n">datasources</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">source</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">layer</span><span class="o">.</span><span class="n">datasources</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="s">&quot;dataSlot&quot;</span><span class="p">):</span>
+             <span class="n">sourceTags</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span><span class="n">sourceTags</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s">&quot;can not export from a non-lazyflow data source (layer=</span><span class="si">%r</span><span class="s">, datasource=</span><span class="si">%r</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">layer</span><span class="p">),</span> <span class="nb">type</span><span class="p">(</span><span class="n">layer</span><span class="o">.</span><span class="n">datasources</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span> <span class="p">)</span>
+
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">_has_lazyflow</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s">&quot;lazyflow not installed&quot;</span><span class="p">)</span> 
+    <span class="kn">import</span> <span class="nn">lazyflow</span>
+    <span class="n">dataSlots</span> <span class="o">=</span> <span class="p">[</span><span class="n">slot</span><span class="o">.</span><span class="n">dataSlot</span> <span class="k">for</span> <span class="p">(</span><span class="n">slot</span><span class="p">,</span> <span class="n">isSlot</span><span class="p">)</span> <span class="ow">in</span>
+                 <span class="nb">zip</span><span class="p">(</span><span class="n">layer</span><span class="o">.</span><span class="n">datasources</span><span class="p">,</span> <span class="n">sourceTags</span><span class="p">)</span> <span class="k">if</span> <span class="n">isSlot</span> <span class="ow">is</span> <span class="bp">True</span><span class="p">]</span>
+
+    <span class="n">opStackChannels</span> <span class="o">=</span> <span class="n">lazyflow</span><span class="o">.</span><span class="n">operators</span><span class="o">.</span><span class="n">OpMultiArrayStacker</span><span class="p">(</span><span class="n">dataSlots</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">getRealOperator</span><span class="p">()</span><span class="o">.</span><span class="n">parent</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">slot</span> <span class="ow">in</span> <span class="n">dataSlots</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">slot</span><span class="p">,</span> <span class="n">lazyflow</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">Slot</span><span class="p">),</span> <span class="s">&quot;slot is of type </span><span class="si">%r</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">slot</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">slot</span><span class="o">.</span><span class="n">getRealOperator</span><span class="p">(),</span> <span class="n">lazyflow</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">Operator</span><span class="p">),</span> <span class="s">&quot;slot&#39;s operator is of type </span><span class="si">%r</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">slot</span><span class="o">.</span><span class="n">getRealOperator</span><span class="p">()))</span>
+    <span class="n">opStackChannels</span><span class="o">.</span><span class="n">AxisFlag</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="s">&quot;c&quot;</span><span class="p">)</span>
+    <span class="n">opStackChannels</span><span class="o">.</span><span class="n">Images</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataSlots</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">islot</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">opStackChannels</span><span class="o">.</span><span class="n">Images</span><span class="p">):</span>
+        <span class="n">islot</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">dataSlots</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+    <span class="c"># Create an operator to do the work</span>
+    <span class="kn">from</span> <span class="nn">lazyflow.operators.ioOperators</span> <span class="kn">import</span> <span class="n">OpFormattedDataExport</span>
+    <span class="n">opExport</span> <span class="o">=</span> <span class="n">OpFormattedDataExport</span><span class="p">(</span> <span class="n">parent</span><span class="o">=</span><span class="n">opStackChannels</span><span class="o">.</span><span class="n">parent</span> <span class="p">)</span>
+    <span class="n">opExport</span><span class="o">.</span><span class="n">OutputFilenameFormat</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span> <span class="n">layer</span><span class="o">.</span><span class="n">name</span> <span class="p">)</span>
+    <span class="n">opExport</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="n">opStackChannels</span><span class="o">.</span><span class="n">Output</span> <span class="p">)</span>
+    <span class="n">opExport</span><span class="o">.</span><span class="n">TransactionSlot</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+    
+    <span class="c"># Use this dialog to populate the operator&#39;s slot settings</span>
+    <span class="n">settingsDlg</span> <span class="o">=</span> <span class="n">DataExportOptionsDlg</span><span class="p">(</span> <span class="n">parent_widget</span><span class="p">,</span> <span class="n">opExport</span> <span class="p">)</span>
+
+    <span class="c"># If user didn&#39;t cancel, run the export now.</span>
+    <span class="k">if</span> <span class="p">(</span> <span class="n">settingsDlg</span><span class="o">.</span><span class="n">exec_</span><span class="p">()</span> <span class="o">==</span> <span class="n">DataExportOptionsDlg</span><span class="o">.</span><span class="n">Accepted</span> <span class="p">):</span>
+        <span class="n">helper</span> <span class="o">=</span> <span class="n">ExportHelper</span><span class="p">(</span> <span class="n">parent_widget</span> <span class="p">)</span>
+        <span class="n">helper</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">opExport</span><span class="p">)</span>
+        
+    <span class="c"># Clean up our temporary operators</span>
+    <span class="n">opExport</span><span class="o">.</span><span class="n">cleanUp</span><span class="p">()</span>
+    <span class="n">opStackChannels</span><span class="o">.</span><span class="n">cleanUp</span><span class="p">()</span>
+
+</div>
+<div class="viewcode-block" id="ExportHelper"><a class="viewcode-back" href="../../../volumina.widgets.html#volumina.widgets.exportHelper.ExportHelper">[docs]</a><span class="k">class</span> <span class="nc">ExportHelper</span><span class="p">(</span><span class="n">QObject</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Executes a layer export in the background, shows a progress dialog, and displays errors (if any).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c"># This signal is used to ensure that request </span>
+    <span class="c">#  callbacks are executed in the gui thread</span>
+    <span class="n">_forwardingSignal</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span> <span class="nb">object</span> <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_handleForwardedCall</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fn</span><span class="p">):</span>
+        <span class="c"># Execute the callback</span>
+        <span class="n">fn</span><span class="p">()</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span> <span class="n">ExportHelper</span><span class="p">,</span> <span class="bp">self</span> <span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">parent</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_forwardingSignal</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handleForwardedCall</span> <span class="p">)</span>
+
+<div class="viewcode-block" id="ExportHelper.run"><a class="viewcode-back" href="../../../volumina.widgets.html#volumina.widgets.exportHelper.ExportHelper.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">opExport</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Start the export and return immediately (after showing the progress dialog).</span>
+<span class="sd">        </span>
+<span class="sd">        :param opExport: The export object to execute.</span>
+<span class="sd">                         It must have a &#39;run_export()&#39; method and a &#39;progressSignal&#39; member.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">progressDlg</span> <span class="o">=</span> <span class="n">MultiStepProgressDialog</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="p">())</span>
+        <span class="n">progressDlg</span><span class="o">.</span><span class="n">setNumberOfSteps</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        
+        <span class="k">def</span> <span class="nf">_forwardProgressToGui</span><span class="p">(</span><span class="n">progress</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_forwardingSignal</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span> <span class="n">partial</span><span class="p">(</span> <span class="n">progressDlg</span><span class="o">.</span><span class="n">setStepProgress</span><span class="p">,</span> <span class="n">progress</span> <span class="p">)</span> <span class="p">)</span>
+        <span class="n">opExport</span><span class="o">.</span><span class="n">progressSignal</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span> <span class="n">_forwardProgressToGui</span> <span class="p">)</span>
+    
+        <span class="k">def</span> <span class="nf">_onFinishExport</span><span class="p">(</span> <span class="o">*</span><span class="n">args</span> <span class="p">):</span> <span class="c"># Also called on cancel</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_forwardingSignal</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span> <span class="n">progressDlg</span><span class="o">.</span><span class="n">finishStep</span> <span class="p">)</span>
+    
+        <span class="k">def</span> <span class="nf">_onFail</span><span class="p">(</span> <span class="n">exc</span><span class="p">,</span> <span class="n">exc_info</span> <span class="p">):</span>
+            <span class="kn">import</span> <span class="nn">traceback</span>
+            <span class="n">traceback</span><span class="o">.</span><span class="n">print_tb</span><span class="p">(</span><span class="n">exc_info</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s">&quot;Failed to export layer due to the following error:</span><span class="se">\n</span><span class="s">{}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="n">exc</span> <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_forwardingSignal</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span> <span class="n">partial</span><span class="p">(</span><span class="n">QMessageBox</span><span class="o">.</span><span class="n">critical</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="p">(),</span> <span class="s">&quot;Export Failed&quot;</span><span class="p">,</span> <span class="n">msg</span><span class="p">)</span> <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_forwardingSignal</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span> <span class="n">progressDlg</span><span class="o">.</span><span class="n">setFailed</span> <span class="p">)</span>
+
+        <span class="c"># Use a request to execute in the background    </span>
+        <span class="n">req</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span> <span class="n">opExport</span><span class="o">.</span><span class="n">run_export</span> <span class="p">)</span>
+        <span class="n">req</span><span class="o">.</span><span class="n">notify_cancelled</span><span class="p">(</span> <span class="n">_onFinishExport</span> <span class="p">)</span>
+        <span class="n">req</span><span class="o">.</span><span class="n">notify_finished</span><span class="p">(</span> <span class="n">_onFinishExport</span> <span class="p">)</span>
+        <span class="n">req</span><span class="o">.</span><span class="n">notify_failed</span><span class="p">(</span> <span class="n">_onFail</span> <span class="p">)</span>
+
+        <span class="c"># Allow cancel.</span>
+        <span class="n">progressDlg</span><span class="o">.</span><span class="n">rejected</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="n">req</span><span class="o">.</span><span class="n">cancel</span> <span class="p">)</span>
+
+        <span class="c"># Start the export</span>
+        <span class="n">req</span><span class="o">.</span><span class="n">submit</span><span class="p">()</span>
+
+        <span class="c"># Execute the progress dialog</span>
+        <span class="c"># (We can block the thread here because the QDialog spins up its own event loop.)</span>
+        <span class="n">progressDlg</span><span class="o">.</span><span class="n">exec_</span><span class="p">()</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Bernhard X. Kausler, Thorben Kröger, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

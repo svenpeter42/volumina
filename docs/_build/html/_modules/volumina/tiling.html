@@ -1,0 +1,804 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>volumina.tiling &mdash; volumina 0.6.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../static/jquery.js"></script>
+    <script type="text/javascript" src="../../static/underscore.js"></script>
+    <script type="text/javascript" src="../../static/doctools.js"></script>
+    <link rel="top" title="volumina 0.6.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for volumina.tiling</h1><div class="highlight"><pre>
+<span class="c">#Python</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span><span class="p">,</span> <span class="n">OrderedDict</span>
+<span class="kn">from</span> <span class="nn">threading</span> <span class="kn">import</span> <span class="n">Thread</span><span class="p">,</span> <span class="n">Lock</span>
+<span class="kn">from</span> <span class="nn">Queue</span> <span class="kn">import</span> <span class="n">Queue</span><span class="p">,</span> <span class="n">Empty</span><span class="p">,</span> <span class="n">Full</span><span class="p">,</span> <span class="n">LifoQueue</span>
+
+<span class="c">#SciPy</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+
+<span class="c">#PyQt</span>
+<span class="kn">from</span> <span class="nn">PyQt4.QtCore</span> <span class="kn">import</span> <span class="n">QRect</span><span class="p">,</span> <span class="n">QRectF</span><span class="p">,</span> <span class="n">QMutex</span><span class="p">,</span> <span class="n">QObject</span><span class="p">,</span> <span class="n">pyqtSignal</span><span class="p">,</span> <span class="n">Qt</span>
+<span class="kn">from</span> <span class="nn">PyQt4.QtGui</span> <span class="kn">import</span> <span class="n">QImage</span><span class="p">,</span> <span class="n">QPainter</span><span class="p">,</span> <span class="n">QTransform</span><span class="p">,</span> <span class="n">QColor</span>
+
+<span class="c">#volumina</span>
+<span class="kn">from</span> <span class="nn">patchAccessor</span> <span class="kn">import</span> <span class="n">PatchAccessor</span>
+<span class="kn">import</span> <span class="nn">volumina</span>
+
+<span class="c">#*******************************************************************************</span>
+<span class="c"># I m a g e T i l e                                                            *</span>
+<span class="c">#*******************************************************************************</span>
+
+<div class="viewcode-block" id="ImageTile"><a class="viewcode-back" href="../../volumina.html#volumina.tiling.ImageTile">[docs]</a><span class="k">class</span> <span class="nc">ImageTile</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rect</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_mutex</span> <span class="o">=</span> <span class="n">QMutex</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">image</span>  <span class="o">=</span> <span class="n">QImage</span><span class="p">(</span><span class="n">rect</span><span class="o">.</span><span class="n">width</span><span class="p">(),</span> <span class="n">rect</span><span class="o">.</span><span class="n">height</span><span class="p">(),</span>
+                             <span class="n">QImage</span><span class="o">.</span><span class="n">Format_ARGB32_Premultiplied</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span><span class="mh">0x00000000</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_topLeft</span> <span class="o">=</span> <span class="n">rect</span><span class="o">.</span><span class="n">topLeft</span><span class="p">()</span>
+
+        <span class="c"># Whenever the underlying data changes, the data version is incremented.</span>
+        <span class="c"># By comparing the data version to the image and request version, it can</span>
+        <span class="c"># be determined if the content of this tile is recent or needs to be</span>
+        <span class="c"># re-computed.</span>
+
+        <span class="c"># version of the data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dataVer</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c"># version of self.image</span>
+        <span class="c">#</span>
+        <span class="c"># If self.imgVer &lt; self.dataVer, the image needs to be re-computed</span>
+        <span class="c"># from the new data.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">imgVer</span>  <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+
+        <span class="c"># version of the request that has been generated to update the contents</span>
+        <span class="c"># of self.image</span>
+        <span class="c">#</span>
+        <span class="c"># If self.reqVer == self.dataVer, a request is currently running that will</span>
+        <span class="c"># eventually replace self.image with the new data.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reqVer</span>  <span class="o">=</span> <span class="o">-</span><span class="mi">2</span>
+
+<div class="viewcode-block" id="ImageTile.clear"><a class="viewcode-back" href="../../volumina.html#volumina.tiling.ImageTile.clear">[docs]</a>    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="ImageTile.paint"><a class="viewcode-back" href="../../volumina.html#volumina.tiling.ImageTile.paint">[docs]</a>    <span class="k">def</span> <span class="nf">paint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">painter</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lock</span><span class="p">()</span>
+        <span class="n">painter</span><span class="o">.</span><span class="n">drawImage</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_topLeft</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">image</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">unlock</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="ImageTile.lock"><a class="viewcode-back" href="../../volumina.html#volumina.tiling.ImageTile.lock">[docs]</a>    <span class="k">def</span> <span class="nf">lock</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_mutex</span><span class="o">.</span><span class="n">lock</span><span class="p">()</span></div>
+<div class="viewcode-block" id="ImageTile.unlock"><a class="viewcode-back" href="../../volumina.html#volumina.tiling.ImageTile.unlock">[docs]</a>    <span class="k">def</span> <span class="nf">unlock</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_mutex</span><span class="o">.</span><span class="n">unlock</span><span class="p">()</span>
+
+</div></div>
+<div class="viewcode-block" id="Tiling"><a class="viewcode-back" href="../../volumina.html#volumina.tiling.Tiling">[docs]</a><span class="k">class</span> <span class="nc">Tiling</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Tiling.__init__()</span>
+
+<span class="sd">    Arguments:</span>
+<span class="sd">    sliceShape -- (width, height)</span>
+<span class="sd">    data2scene -- QTransform from data to image coordinates (default:</span>
+<span class="sd">                  identity transform)</span>
+<span class="sd">    blockSize  -- base tile size: blockSize x blockSize (default 256)</span>
+<span class="sd">    overlap    -- overlap between tiles positive number prevents rendering</span>
+<span class="sd">                  artifacts between tiles for certain zoom levels (default 1)</span>
+
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sliceShape</span><span class="p">,</span> <span class="n">data2scene</span><span class="o">=</span><span class="n">QTransform</span><span class="p">(),</span>
+                 <span class="n">blockSize</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">overlap</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">overlap_draw</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span>
+                 <span class="n">name</span><span class="o">=</span><span class="s">&quot;Unnamed Tiling&quot;</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">blockSize</span> <span class="o">=</span> <span class="n">blockSize</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">overlap</span> <span class="o">=</span> <span class="n">overlap</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_patchAccessor</span> <span class="o">=</span> <span class="n">PatchAccessor</span><span class="p">(</span><span class="n">sliceShape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                                            <span class="n">sliceShape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                                            <span class="n">blockSize</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">blockSize</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_overlap_draw</span> <span class="o">=</span> <span class="n">overlap_draw</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_overlap</span> <span class="o">=</span> <span class="n">overlap</span>
+
+        <span class="n">numPatches</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_patchAccessor</span><span class="o">.</span><span class="n">patchCount</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">imageRectFs</span> <span class="o">=</span> <span class="p">[</span><span class="bp">None</span><span class="p">]</span><span class="o">*</span><span class="n">numPatches</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dataRectFs</span>  <span class="o">=</span> <span class="p">[</span><span class="bp">None</span><span class="p">]</span><span class="o">*</span><span class="n">numPatches</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tileRectFs</span>  <span class="o">=</span> <span class="p">[</span><span class="bp">None</span><span class="p">]</span><span class="o">*</span><span class="n">numPatches</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">imageRects</span>  <span class="o">=</span> <span class="p">[</span><span class="bp">None</span><span class="p">]</span><span class="o">*</span><span class="n">numPatches</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dataRects</span>   <span class="o">=</span> <span class="p">[</span><span class="bp">None</span><span class="p">]</span><span class="o">*</span><span class="n">numPatches</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tileRects</span>   <span class="o">=</span> <span class="p">[</span><span class="bp">None</span><span class="p">]</span><span class="o">*</span><span class="n">numPatches</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sliceShape</span>  <span class="o">=</span> <span class="n">sliceShape</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data2scene</span> <span class="o">=</span> <span class="n">data2scene</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">data2scene</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data2scene</span>
+
+    <span class="nd">@data2scene.setter</span>
+<div class="viewcode-block" id="Tiling.data2scene"><a class="viewcode-back" href="../../volumina.html#volumina.tiling.Tiling.data2scene">[docs]</a>    <span class="k">def</span> <span class="nf">data2scene</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data2scene</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_data2scene</span> <span class="o">=</span> <span class="n">data2scene</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scene2data</span><span class="p">,</span> <span class="n">isInvertible</span> <span class="o">=</span> <span class="n">data2scene</span><span class="o">.</span><span class="n">inverted</span><span class="p">()</span>
+        <span class="k">assert</span> <span class="n">isInvertible</span>
+
+        <span class="k">for</span> <span class="n">patchNr</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_patchAccessor</span><span class="o">.</span><span class="n">patchCount</span><span class="p">):</span>
+            <span class="c"># the patch accessor uses the data coordinate system.</span>
+            <span class="c"># because the patch is drawn on the screen, its holds coordinates</span>
+            <span class="c"># corresponding to Qt&#39;s QGraphicsScene&#39;s system, which need to be</span>
+            <span class="c"># converted to scene coordinates</span>
+
+            <span class="c"># the image rectangle includes an overlap margin</span>
+            <span class="n">imageRectF</span> <span class="o">=</span> <span class="n">data2scene</span><span class="o">.</span><span class="n">mapRect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_patchAccessor</span><span class="o">.</span><span class="n">patchRectF</span><span class="p">(</span><span class="n">patchNr</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">overlap</span><span class="p">))</span>
+
+            <span class="c"># the patch rectangle has per default no overlap</span>
+            <span class="n">patchRectF</span> <span class="o">=</span> <span class="n">data2scene</span><span class="o">.</span><span class="n">mapRect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_patchAccessor</span><span class="o">.</span><span class="n">patchRectF</span><span class="p">(</span><span class="n">patchNr</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+
+            <span class="c"># add a little overlap when the overlap_draw setting is</span>
+            <span class="c"># activated</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_overlap_draw</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">patchRectF</span> <span class="o">=</span> <span class="n">QRectF</span><span class="p">(</span><span class="n">patchRectF</span><span class="o">.</span><span class="n">x</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_overlap_draw</span><span class="p">,</span>
+                                    <span class="n">patchRectF</span><span class="o">.</span><span class="n">y</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_overlap_draw</span><span class="p">,</span>
+                                    <span class="n">patchRectF</span><span class="o">.</span><span class="n">width</span><span class="p">()</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_overlap_draw</span><span class="p">,</span>
+                                    <span class="n">patchRectF</span><span class="o">.</span><span class="n">height</span><span class="p">()</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_overlap_draw</span><span class="p">)</span>
+
+            <span class="n">patchRect</span> <span class="o">=</span> <span class="n">QRect</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">patchRectF</span><span class="o">.</span><span class="n">x</span><span class="p">()),</span>
+                              <span class="nb">round</span><span class="p">(</span><span class="n">patchRectF</span><span class="o">.</span><span class="n">y</span><span class="p">()),</span>
+                              <span class="nb">round</span><span class="p">(</span><span class="n">patchRectF</span><span class="o">.</span><span class="n">width</span><span class="p">()),</span>
+                              <span class="nb">round</span><span class="p">(</span><span class="n">patchRectF</span><span class="o">.</span><span class="n">height</span><span class="p">()))</span>
+
+            <span class="c"># the image rectangles of neighboring patches can overlap</span>
+            <span class="c"># slightly, to account for inaccuracies in sub-pixel</span>
+            <span class="c"># rendering of many ImagePatch objects</span>
+            <span class="n">imageRect</span> <span class="o">=</span> <span class="n">QRect</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">imageRectF</span><span class="o">.</span><span class="n">x</span><span class="p">()),</span>
+                              <span class="nb">round</span><span class="p">(</span><span class="n">imageRectF</span><span class="o">.</span><span class="n">y</span><span class="p">()),</span>
+                              <span class="nb">round</span><span class="p">(</span><span class="n">imageRectF</span><span class="o">.</span><span class="n">width</span><span class="p">()),</span>
+                              <span class="nb">round</span><span class="p">(</span><span class="n">imageRectF</span><span class="o">.</span><span class="n">height</span><span class="p">()))</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">imageRectFs</span><span class="p">[</span><span class="n">patchNr</span><span class="p">]</span> <span class="o">=</span> <span class="n">imageRectF</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dataRectFs</span><span class="p">[</span> <span class="n">patchNr</span><span class="p">]</span> <span class="o">=</span> <span class="n">imageRectF</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tileRectFs</span><span class="p">[</span> <span class="n">patchNr</span><span class="p">]</span> <span class="o">=</span> <span class="n">patchRectF</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">imageRects</span><span class="p">[</span> <span class="n">patchNr</span><span class="p">]</span> <span class="o">=</span> <span class="n">imageRect</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tileRects</span><span class="p">[</span>  <span class="n">patchNr</span><span class="p">]</span> <span class="o">=</span> <span class="n">patchRect</span>
+
+</div>
+<div class="viewcode-block" id="Tiling.boundingRectF"><a class="viewcode-back" href="../../volumina.html#volumina.tiling.Tiling.boundingRectF">[docs]</a>    <span class="k">def</span> <span class="nf">boundingRectF</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">tileRectFs</span><span class="p">:</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tileRectFs</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">br</span> <span class="o">=</span> <span class="n">QRectF</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">x</span><span class="p">()</span><span class="o">+</span><span class="n">p</span><span class="o">.</span><span class="n">width</span><span class="p">(),</span> <span class="n">p</span><span class="o">.</span><span class="n">y</span><span class="p">()</span><span class="o">+</span><span class="n">p</span><span class="o">.</span><span class="n">height</span><span class="p">())</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">br</span> <span class="o">=</span> <span class="n">QRectF</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">br</span>
+</div>
+<div class="viewcode-block" id="Tiling.containsF"><a class="viewcode-back" href="../../volumina.html#volumina.tiling.Tiling.containsF">[docs]</a>    <span class="k">def</span> <span class="nf">containsF</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tileRectFs</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="n">point</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">i</span>
+</div>
+<div class="viewcode-block" id="Tiling.intersected"><a class="viewcode-back" href="../../volumina.html#volumina.tiling.Tiling.intersected">[docs]</a>    <span class="k">def</span> <span class="nf">intersected</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sceneRect</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">sceneRect</span><span class="o">.</span><span class="n">isValid</span><span class="p">():</span>
+            <span class="k">return</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tileRects</span><span class="p">))</span>
+
+        <span class="c"># Patch accessor uses data coordinates</span>
+        <span class="n">rect</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data2scene</span><span class="o">.</span><span class="n">inverted</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">mapRect</span><span class="p">(</span><span class="n">sceneRect</span><span class="p">)</span>
+        <span class="n">patchNumbers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_patchAccessor</span><span class="o">.</span><span class="n">getPatchesForRect</span><span class="p">(</span>
+                            <span class="n">rect</span><span class="o">.</span><span class="n">topLeft</span><span class="p">()</span><span class="o">.</span><span class="n">x</span><span class="p">(),</span> <span class="n">rect</span><span class="o">.</span><span class="n">topLeft</span><span class="p">()</span><span class="o">.</span><span class="n">y</span><span class="p">(),</span>
+                            <span class="n">rect</span><span class="o">.</span><span class="n">bottomRight</span><span class="p">()</span><span class="o">.</span><span class="n">x</span><span class="p">(),</span> <span class="n">rect</span><span class="o">.</span><span class="n">bottomRight</span><span class="p">()</span><span class="o">.</span><span class="n">y</span><span class="p">()</span> <span class="p">)</span>
+        <span class="k">return</span> <span class="n">patchNumbers</span>
+</div>
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">imageRectFs</span><span class="p">)</span>
+
+<span class="c">#*******************************************************************************</span>
+<span class="c"># T i l e d I m a g e L a y e r                                                *</span>
+<span class="c">#*******************************************************************************</span>
+</div>
+<div class="viewcode-block" id="TiledImageLayer"><a class="viewcode-back" href="../../volumina.html#volumina.tiling.TiledImageLayer">[docs]</a><span class="k">class</span> <span class="nc">TiledImageLayer</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tiling</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_imageTiles</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tiling</span> <span class="o">=</span> <span class="n">tiling</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_imageTiles</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_imageTiles</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">ImageTile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_tiling</span><span class="o">.</span><span class="n">imageRects</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_imageTiles</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_tiling</span><span class="p">)):</span>
+            <span class="k">yield</span> <span class="bp">self</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+</div>
+<span class="k">class</span> <span class="nc">_MultiCache</span><span class="p">(</span> <span class="nb">object</span> <span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">first_uid</span><span class="p">,</span> <span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span><span class="bp">None</span><span class="p">,</span>
+                  <span class="n">maxcaches</span><span class="o">=</span><span class="bp">None</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_maxcaches</span> <span class="o">=</span> <span class="n">maxcaches</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">caches</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span> <span class="n">first_uid</span><span class="p">,</span> <span class="n">default_factory</span><span class="o">=</span><span class="n">default_factory</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">uid</span><span class="p">,</span> <span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span><span class="bp">None</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="n">uid</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">caches</span><span class="p">:</span>
+            <span class="n">cache</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="n">default_factory</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">caches</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span> <span class="o">=</span> <span class="n">cache</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&#39;MultiCache.add: uid </span><span class="si">%s</span><span class="s"> is already in use&#39;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="n">uid</span><span class="p">))</span>
+
+        <span class="c"># remove oldest cache, if necessary</span>
+        <span class="n">old_uid</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_maxcaches</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">caches</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_maxcaches</span><span class="p">:</span>
+            <span class="n">old_uid</span><span class="p">,</span> <span class="n">v</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">caches</span><span class="o">.</span><span class="n">popitem</span><span class="p">(</span><span class="bp">False</span><span class="p">)</span> <span class="c"># removes item in LIFO order</span>
+        <span class="k">return</span> <span class="n">old_uid</span>
+
+    <span class="k">def</span> <span class="nf">touch</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">uid</span> <span class="p">):</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">caches</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">caches</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">caches</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span> <span class="o">=</span> <span class="n">c</span>
+
+
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">wraps</span>
+<div class="viewcode-block" id="synchronous"><a class="viewcode-back" href="../../volumina.html#volumina.tiling.synchronous">[docs]</a><span class="k">def</span> <span class="nf">synchronous</span><span class="p">(</span> <span class="n">tlockname</span> <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;A decorator to place an instance based lock around a method &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">_synched</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+        <span class="nd">@wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+        <span class="k">def</span> <span class="nf">_synchronizer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="n">tlock</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__getattribute__</span><span class="p">(</span> <span class="n">tlockname</span><span class="p">)</span>
+            <span class="n">tlock</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">func</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">finally</span><span class="p">:</span>
+                <span class="n">tlock</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">_synchronizer</span>
+    <span class="k">return</span> <span class="n">_synched</span>
+
+</div>
+<span class="k">class</span> <span class="nc">_TilesCache</span><span class="p">(</span> <span class="nb">object</span> <span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">first_stack_id</span><span class="p">,</span> <span class="n">sims</span><span class="p">,</span> <span class="n">maxstacks</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span> <span class="o">=</span> <span class="n">Lock</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sims</span> <span class="o">=</span> <span class="n">sims</span>
+
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;first_uid&#39;</span> <span class="p">:</span> <span class="n">first_stack_id</span><span class="p">,</span>
+                  <span class="s">&#39;maxcaches&#39;</span> <span class="p">:</span> <span class="n">maxstacks</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tileCache</span> <span class="o">=</span> <span class="n">_MultiCache</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="mf">0.</span><span class="p">),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tileCacheDirty</span> <span class="o">=</span> <span class="n">_MultiCache</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_layerCache</span> <span class="o">=</span> <span class="n">_MultiCache</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_layerCacheDirty</span> <span class="o">=</span> <span class="n">_MultiCache</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_layerCacheTimestamp</span> <span class="o">=</span> <span class="n">_MultiCache</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="nd">@synchronous</span><span class="p">(</span><span class="s">&#39;_lock&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__contains__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">stack_id</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="n">stack_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tileCache</span><span class="o">.</span><span class="n">caches</span>
+
+    <span class="nd">@synchronous</span><span class="p">(</span><span class="s">&#39;_lock&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_tileCache</span><span class="o">.</span><span class="n">caches</span><span class="p">)</span>
+
+    <span class="nd">@synchronous</span><span class="p">(</span><span class="s">&#39;_lock&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">tile</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">stack_id</span><span class="p">,</span> <span class="n">tile_id</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tileCache</span><span class="o">.</span><span class="n">caches</span><span class="p">[</span><span class="n">stack_id</span><span class="p">][</span><span class="n">tile_id</span><span class="p">]</span>
+    <span class="nd">@synchronous</span><span class="p">(</span><span class="s">&#39;_lock&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">setTile</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">stack_id</span><span class="p">,</span> <span class="n">tile_id</span><span class="p">,</span> <span class="n">img</span><span class="p">,</span> <span class="n">stack_visible</span><span class="p">,</span> <span class="n">stack_occluded</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">stack_visible</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">visible</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">stack_visible</span><span class="p">)</span>
+            <span class="n">occluded</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">stack_occluded</span><span class="p">)</span>
+            <span class="n">visibleAndNotOccluded</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">visible</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">logical_not</span><span class="p">(</span><span class="n">occluded</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">numpy</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">visibleAndNotOccluded</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">dirty</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">_layerCacheDirty</span><span class="o">.</span><span class="n">caches</span><span class="p">[</span><span class="n">stack_id</span><span class="p">][(</span><span class="n">ims</span><span class="p">,</span> <span class="n">tile_id</span><span class="p">)]</span>
+                                       <span class="k">for</span> <span class="n">ims</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sims</span><span class="o">.</span><span class="n">viewImageSources</span><span class="p">()])</span>
+                <span class="n">num</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">dirty</span><span class="p">,</span> <span class="n">visibleAndNotOccluded</span><span class="p">)</span> <span class="o">==</span> <span class="bp">True</span><span class="p">)</span>
+                <span class="n">denom</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">visibleAndNotOccluded</span><span class="p">))</span>
+                <span class="n">progress</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">num</span> <span class="o">/</span> <span class="n">denom</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">progress</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">progress</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tileCache</span><span class="o">.</span><span class="n">caches</span><span class="p">[</span><span class="n">stack_id</span><span class="p">][</span><span class="n">tile_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">progress</span><span class="p">)</span>
+
+    <span class="nd">@synchronous</span><span class="p">(</span><span class="s">&#39;_lock&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">tileDirty</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">stack_id</span><span class="p">,</span> <span class="n">tile_id</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tileCacheDirty</span><span class="o">.</span><span class="n">caches</span><span class="p">[</span><span class="n">stack_id</span><span class="p">][</span><span class="n">tile_id</span><span class="p">]</span>
+    <span class="nd">@synchronous</span><span class="p">(</span><span class="s">&#39;_lock&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">setTileDirty</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">stack_id</span><span class="p">,</span> <span class="n">tile_id</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tileCacheDirty</span><span class="o">.</span><span class="n">caches</span><span class="p">[</span><span class="n">stack_id</span><span class="p">][</span><span class="n">tile_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">b</span>
+    <span class="nd">@synchronous</span><span class="p">(</span><span class="s">&#39;_lock&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">setTileDirtyAll</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">tile_id</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">stack_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tileCacheDirty</span><span class="o">.</span><span class="n">caches</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_tileCacheDirty</span><span class="o">.</span><span class="n">caches</span><span class="p">[</span><span class="n">stack_id</span><span class="p">][</span><span class="n">tile_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">b</span>
+
+    <span class="nd">@synchronous</span><span class="p">(</span><span class="s">&#39;_lock&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">layer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stack_id</span><span class="p">,</span> <span class="n">layer_id</span><span class="p">,</span> <span class="n">tile_id</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layerCache</span><span class="o">.</span><span class="n">caches</span><span class="p">[</span><span class="n">stack_id</span><span class="p">][(</span><span class="n">layer_id</span><span class="p">,</span><span class="n">tile_id</span><span class="p">)]</span>
+    <span class="nd">@synchronous</span><span class="p">(</span><span class="s">&#39;_lock&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">setLayer</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">stack_id</span><span class="p">,</span> <span class="n">layer_id</span><span class="p">,</span> <span class="n">tile_id</span><span class="p">,</span> <span class="n">img</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_layerCache</span><span class="o">.</span><span class="n">caches</span><span class="p">[</span><span class="n">stack_id</span><span class="p">][(</span><span class="n">layer_id</span><span class="p">,</span> <span class="n">tile_id</span><span class="p">)]</span> <span class="o">=</span> <span class="n">img</span>
+
+    <span class="nd">@synchronous</span><span class="p">(</span><span class="s">&#39;_lock&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">layerDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stack_id</span><span class="p">,</span> <span class="n">layer_id</span><span class="p">,</span> <span class="n">tile_id</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layerCacheDirty</span><span class="o">.</span><span class="n">caches</span><span class="p">[</span><span class="n">stack_id</span><span class="p">][(</span><span class="n">layer_id</span><span class="p">,</span> <span class="n">tile_id</span><span class="p">)]</span>
+    <span class="nd">@synchronous</span><span class="p">(</span><span class="s">&#39;_lock&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">setLayerDirty</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">stack_id</span><span class="p">,</span> <span class="n">layer_id</span><span class="p">,</span> <span class="n">tile_id</span><span class="p">,</span> <span class="n">b</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_layerCacheDirty</span><span class="o">.</span><span class="n">caches</span><span class="p">[</span><span class="n">stack_id</span><span class="p">][(</span><span class="n">layer_id</span><span class="p">,</span> <span class="n">tile_id</span><span class="p">)]</span> <span class="o">=</span> <span class="n">b</span>
+    <span class="nd">@synchronous</span><span class="p">(</span><span class="s">&#39;_lock&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">setLayerDirtyAll</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">layer_id</span><span class="p">,</span> <span class="n">tile_id</span><span class="p">,</span> <span class="n">b</span> <span class="p">):</span>
+        <span class="k">for</span> <span class="n">stack_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layerCacheDirty</span><span class="o">.</span><span class="n">caches</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_layerCacheDirty</span><span class="o">.</span><span class="n">caches</span><span class="p">[</span><span class="n">stack_id</span><span class="p">][(</span><span class="n">layer_id</span><span class="p">,</span> <span class="n">tile_id</span><span class="p">)]</span> <span class="o">=</span> <span class="n">b</span>
+
+    <span class="nd">@synchronous</span><span class="p">(</span><span class="s">&#39;_lock&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">layerTimestamp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stack_id</span><span class="p">,</span> <span class="n">layer_id</span><span class="p">,</span> <span class="n">tile_id</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layerCacheTimestamp</span><span class="o">.</span><span class="n">caches</span><span class="p">[</span><span class="n">stack_id</span><span class="p">][(</span><span class="n">layer_id</span><span class="p">,</span> <span class="n">tile_id</span><span class="p">)]</span>
+    <span class="nd">@synchronous</span><span class="p">(</span><span class="s">&#39;_lock&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">setLayerTimestamp</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">stack_id</span><span class="p">,</span> <span class="n">layer_id</span><span class="p">,</span> <span class="n">tile_id</span><span class="p">,</span> <span class="n">time</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_layerCacheTimestamp</span><span class="o">.</span><span class="n">caches</span><span class="p">[</span><span class="n">stack_id</span><span class="p">][(</span><span class="n">layer_id</span><span class="p">,</span> <span class="n">tile_id</span><span class="p">)]</span> <span class="o">=</span> <span class="n">time</span>
+
+    <span class="nd">@synchronous</span><span class="p">(</span><span class="s">&#39;_lock&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">addStack</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">stack_id</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tileCache</span><span class="o">.</span><span class="n">add</span><span class="p">(</span> <span class="n">stack_id</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tileCacheDirty</span><span class="o">.</span><span class="n">add</span><span class="p">(</span> <span class="n">stack_id</span><span class="p">,</span> <span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span><span class="bp">True</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_layerCache</span><span class="o">.</span><span class="n">add</span><span class="p">(</span> <span class="n">stack_id</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_layerCacheDirty</span><span class="o">.</span><span class="n">add</span><span class="p">(</span> <span class="n">stack_id</span><span class="p">,</span> <span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span><span class="bp">True</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_layerCacheTimestamp</span><span class="o">.</span><span class="n">add</span><span class="p">(</span> <span class="n">stack_id</span><span class="p">,</span> <span class="n">default_factory</span><span class="o">=</span><span class="nb">float</span> <span class="p">)</span>
+
+    <span class="nd">@synchronous</span><span class="p">(</span><span class="s">&#39;_lock&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">touchStack</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">stack_id</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tileCache</span><span class="o">.</span><span class="n">touch</span><span class="p">(</span> <span class="n">stack_id</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tileCacheDirty</span><span class="o">.</span><span class="n">touch</span><span class="p">(</span> <span class="n">stack_id</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_layerCache</span><span class="o">.</span><span class="n">touch</span><span class="p">(</span> <span class="n">stack_id</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_layerCacheDirty</span><span class="o">.</span><span class="n">touch</span><span class="p">(</span> <span class="n">stack_id</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_layerCacheTimestamp</span><span class="o">.</span><span class="n">touch</span><span class="p">(</span> <span class="n">stack_id</span> <span class="p">)</span>
+
+    <span class="nd">@synchronous</span><span class="p">(</span><span class="s">&#39;_lock&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">updateTileIfNecessary</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">stack_id</span><span class="p">,</span> <span class="n">layer_id</span><span class="p">,</span> <span class="n">tile_id</span><span class="p">,</span>
+                               <span class="n">req_timestamp</span><span class="p">,</span> <span class="n">img</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">req_timestamp</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layerCacheTimestamp</span><span class="o">.</span><span class="n">caches</span><span class="p">[</span><span class="n">stack_id</span><span class="p">][(</span><span class="n">layer_id</span><span class="p">,</span> <span class="n">tile_id</span><span class="p">)]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_layerCache</span><span class="o">.</span><span class="n">caches</span><span class="p">[</span><span class="n">stack_id</span><span class="p">][(</span><span class="n">layer_id</span><span class="p">,</span> <span class="n">tile_id</span><span class="p">)]</span> <span class="o">=</span> <span class="n">img</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_layerCacheDirty</span><span class="o">.</span><span class="n">caches</span><span class="p">[</span><span class="n">stack_id</span><span class="p">][(</span><span class="n">layer_id</span><span class="p">,</span> <span class="n">tile_id</span><span class="p">)]</span> <span class="o">=</span> <span class="bp">False</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_layerCacheTimestamp</span><span class="o">.</span><span class="n">caches</span><span class="p">[</span><span class="n">stack_id</span><span class="p">][(</span><span class="n">layer_id</span><span class="p">,</span> <span class="n">tile_id</span><span class="p">)]</span> <span class="o">=</span> <span class="n">req_timestamp</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_tileCacheDirty</span><span class="o">.</span><span class="n">caches</span><span class="p">[</span><span class="n">stack_id</span><span class="p">][</span><span class="n">tile_id</span><span class="p">]</span> <span class="o">=</span> <span class="bp">True</span>
+
+
+<div class="viewcode-block" id="TileProvider"><a class="viewcode-back" href="../../volumina.html#volumina.tiling.TileProvider">[docs]</a><span class="k">class</span> <span class="nc">TileProvider</span><span class="p">(</span> <span class="n">QObject</span> <span class="p">):</span>
+    <span class="n">THREAD_HEARTBEAT</span> <span class="o">=</span> <span class="mf">0.2</span>
+
+    <span class="n">Tile</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s">&#39;Tile&#39;</span><span class="p">,</span> <span class="s">&#39;id qimg rectF progress tiling&#39;</span><span class="p">)</span>
+    <span class="n">sceneRectChanged</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span> <span class="n">QRectF</span> <span class="p">)</span>
+
+
+    <span class="sd">&#39;&#39;&#39;TileProvider __init__</span>
+
+<span class="sd">    Keyword Arguments:</span>
+<span class="sd">    cache_size                -- maximal number of encountered stacks</span>
+<span class="sd">                                 to cache, i.e. slices if the imagesources</span>
+<span class="sd">                                 draw from slicesources (default 10)</span>
+<span class="sd">    request_queue_size        -- maximal number of request to queue up (default 100000)</span>
+<span class="sd">    n_threads                 -- maximal number of request threads; this determines the</span>
+<span class="sd">                                 maximal number of simultaneously running requests</span>
+<span class="sd">                                 to the pixelpipeline (default: 2)</span>
+<span class="sd">    layerIdChange_means_dirty -- layerId changes invalidate the cache; by default only</span>
+<span class="sd">                                 stackId changes do that (default False)</span>
+<span class="sd">    parent                    -- QObject</span>
+
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">axesSwapped</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_axesSwapped</span>
+
+    <span class="nd">@axesSwapped.setter</span>
+<div class="viewcode-block" id="TileProvider.axesSwapped"><a class="viewcode-back" href="../../volumina.html#volumina.tiling.TileProvider.axesSwapped">[docs]</a>    <span class="k">def</span> <span class="nf">axesSwapped</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_axesSwapped</span> <span class="o">=</span> <span class="n">value</span>
+</div>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">tiling</span><span class="p">,</span> <span class="n">stackedImageSources</span><span class="p">,</span> <span class="n">cache_size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+                  <span class="n">request_queue_size</span><span class="o">=</span><span class="mi">100000</span><span class="p">,</span> <span class="n">n_threads</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                  <span class="n">layerIdChange_means_dirty</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="bp">None</span> <span class="p">):</span>
+        <span class="n">QObject</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">parent</span> <span class="o">=</span> <span class="n">parent</span> <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">tiling</span> <span class="o">=</span> <span class="n">tiling</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">axesSwapped</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sims</span> <span class="o">=</span> <span class="n">stackedImageSources</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cache_size</span> <span class="o">=</span> <span class="n">cache_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_request_queue_size</span> <span class="o">=</span> <span class="n">request_queue_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_n_threads</span> <span class="o">=</span> <span class="n">n_threads</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_layerIdChange_means_dirty</span> <span class="o">=</span> <span class="n">layerIdChange_means_dirty</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_stack_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sims</span><span class="o">.</span><span class="n">stackId</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span> <span class="o">=</span> <span class="n">_TilesCache</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_current_stack_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sims</span><span class="p">,</span>
+                                  <span class="n">maxstacks</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_cache_size</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dirtyLayerQueue</span> <span class="o">=</span> <span class="n">LifoQueue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_request_queue_size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_prefetchQueue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_request_queue_size</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sims</span><span class="o">.</span><span class="n">layerDirty</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_onLayerDirty</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sims</span><span class="o">.</span><span class="n">visibleChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_onVisibleChanged</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sims</span><span class="o">.</span><span class="n">opacityChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_onOpacityChanged</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sims</span><span class="o">.</span><span class="n">sizeChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_onSizeChanged</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sims</span><span class="o">.</span><span class="n">orderChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_onOrderChanged</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sims</span><span class="o">.</span><span class="n">stackIdChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_onStackIdChanged</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layerIdChange_means_dirty</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_sims</span><span class="o">.</span><span class="n">layerIdChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_onLayerIdChanged</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_keepRendering</span> <span class="o">=</span> <span class="bp">True</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dirtyLayerThreads</span> <span class="o">=</span> <span class="p">[</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_dirtyLayersWorker</span><span class="p">)</span>
+                                   <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_threads</span><span class="p">)]</span>
+        <span class="k">for</span> <span class="n">thread</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dirtyLayerThreads</span><span class="p">:</span>
+            <span class="n">thread</span><span class="o">.</span><span class="n">daemon</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="p">[</span> <span class="n">thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span> <span class="k">for</span> <span class="n">thread</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dirtyLayerThreads</span> <span class="p">]</span>
+
+<div class="viewcode-block" id="TileProvider.getTiles"><a class="viewcode-back" href="../../volumina.html#volumina.tiling.TileProvider.getTiles">[docs]</a>    <span class="k">def</span> <span class="nf">getTiles</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">rectF</span> <span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Get tiles in rect and request a refresh.</span>
+
+<span class="sd">        Returns tiles intersecting with rectF immediately and requests</span>
+<span class="sd">        a refresh of these tiles. Next time you call this function the</span>
+<span class="sd">        tiles may be already (partially) updated. If you want to wait</span>
+<span class="sd">        until the rendering is fully complete, call join().</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">requestRefresh</span><span class="p">(</span> <span class="n">rectF</span> <span class="p">)</span>
+        <span class="n">tile_nos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tiling</span><span class="o">.</span><span class="n">intersected</span><span class="p">(</span> <span class="n">rectF</span> <span class="p">)</span>
+        <span class="n">stack_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_stack_id</span>
+        <span class="k">for</span> <span class="n">tile_no</span> <span class="ow">in</span> <span class="n">tile_nos</span><span class="p">:</span>
+            <span class="n">qimg</span><span class="p">,</span> <span class="n">progress</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">stack_id</span><span class="p">,</span> <span class="n">tile_no</span><span class="p">)</span>
+            <span class="k">yield</span> <span class="n">TileProvider</span><span class="o">.</span><span class="n">Tile</span><span class="p">(</span>
+                <span class="n">tile_no</span><span class="p">,</span>
+                <span class="n">qimg</span><span class="p">,</span>
+                <span class="n">QRectF</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tiling</span><span class="o">.</span><span class="n">imageRects</span><span class="p">[</span><span class="n">tile_no</span><span class="p">]),</span>
+                <span class="n">progress</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">tiling</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="TileProvider.requestRefresh"><a class="viewcode-back" href="../../volumina.html#volumina.tiling.TileProvider.requestRefresh">[docs]</a>    <span class="k">def</span> <span class="nf">requestRefresh</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">rectF</span> <span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Requests tiles to be refreshed.</span>
+
+<span class="sd">        Returns immediately. Call join() to wait for</span>
+<span class="sd">        the end of the rendering.</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">tile_nos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tiling</span><span class="o">.</span><span class="n">intersected</span><span class="p">(</span> <span class="n">rectF</span> <span class="p">)</span>
+        <span class="k">for</span> <span class="n">tile_no</span> <span class="ow">in</span> <span class="n">tile_nos</span><span class="p">:</span>
+            <span class="n">stack_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_stack_id</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_refreshTile</span><span class="p">(</span> <span class="n">stack_id</span><span class="p">,</span> <span class="n">tile_no</span> <span class="p">)</span>
+</div>
+<div class="viewcode-block" id="TileProvider.prefetch"><a class="viewcode-back" href="../../volumina.html#volumina.tiling.TileProvider.prefetch">[docs]</a>    <span class="k">def</span> <span class="nf">prefetch</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">rectF</span><span class="p">,</span> <span class="n">through</span> <span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Request fetching of tiles in advance.</span>
+
+<span class="sd">        Returns immediately. Prefetch will commence after all regular</span>
+<span class="sd">        tiles are refreshed (see requestRefresh() and getTiles() ).</span>
+<span class="sd">        The prefetch is reset when the &#39;through&#39; value of the slicing</span>
+<span class="sd">        changes. Several calls to prefetch are handeled in Fifo</span>
+<span class="sd">        order.</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache_size</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">stack_id</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_current_stack_id</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">through</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">stack_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">addStack</span><span class="p">(</span><span class="n">stack_id</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">touchStack</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_stack_id</span> <span class="p">)</span>
+            <span class="n">tile_nos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tiling</span><span class="o">.</span><span class="n">intersected</span><span class="p">(</span> <span class="n">rectF</span> <span class="p">)</span>
+            <span class="k">for</span> <span class="n">tile_no</span> <span class="ow">in</span> <span class="n">tile_nos</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_refreshTile</span><span class="p">(</span> <span class="n">stack_id</span><span class="p">,</span> <span class="n">tile_no</span><span class="p">,</span> <span class="n">prefetch</span><span class="o">=</span><span class="bp">True</span> <span class="p">)</span>
+</div>
+<div class="viewcode-block" id="TileProvider.join"><a class="viewcode-back" href="../../volumina.html#volumina.tiling.TileProvider.join">[docs]</a>    <span class="k">def</span> <span class="nf">join</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Wait until all refresh request are processed.</span>
+
+<span class="sd">        Blocks until no refresh request pending anymore and all</span>
+<span class="sd">        rendering finished.</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dirtyLayerQueue</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+
+</div>
+<div class="viewcode-block" id="TileProvider.notifyThreadsToStop"><a class="viewcode-back" href="../../volumina.html#volumina.tiling.TileProvider.notifyThreadsToStop">[docs]</a>    <span class="k">def</span> <span class="nf">notifyThreadsToStop</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Signals render threads to stop.</span>
+
+<span class="sd">        Call this method at the end of the lifetime of a TileProvider</span>
+<span class="sd">        instance. Otherwise the garbage collector will not clean up</span>
+<span class="sd">        the instance (even if you call del).</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_keepRendering</span> <span class="o">=</span> <span class="bp">False</span>
+</div>
+<div class="viewcode-block" id="TileProvider.threadsAreNotifiedToStop"><a class="viewcode-back" href="../../volumina.html#volumina.tiling.TileProvider.threadsAreNotifiedToStop">[docs]</a>    <span class="k">def</span> <span class="nf">threadsAreNotifiedToStop</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Check if NotifyThreadsToStop() was called at least once.&#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_keepRendering</span>
+</div>
+<div class="viewcode-block" id="TileProvider.joinThreads"><a class="viewcode-back" href="../../volumina.html#volumina.tiling.TileProvider.joinThreads">[docs]</a>    <span class="k">def</span> <span class="nf">joinThreads</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="bp">None</span> <span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Wait until all threads terminated.</span>
+
+<span class="sd">        Without calling notifyThreadsToStop, threads will never</span>
+<span class="sd">        terminate.</span>
+
+<span class="sd">        Arguments:</span>
+<span class="sd">        timeout -- timeout in seconds as a floating point number</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">for</span> <span class="n">thread</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dirtyLayerThreads</span><span class="p">:</span>
+            <span class="n">thread</span><span class="o">.</span><span class="n">join</span><span class="p">(</span> <span class="n">timeout</span> <span class="p">)</span>
+</div>
+<div class="viewcode-block" id="TileProvider.aliveThreads"><a class="viewcode-back" href="../../volumina.html#volumina.tiling.TileProvider.aliveThreads">[docs]</a>    <span class="k">def</span> <span class="nf">aliveThreads</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Return a map of thread identifiers and their alive status.</span>
+
+<span class="sd">        All threads are alive until notifyThreadsToStop() is</span>
+<span class="sd">        called. After that, they start dying. Call joinThreads() to wait</span>
+<span class="sd">        for the last thread to die.</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">at</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">thread</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dirtyLayerThreads</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">thread</span><span class="o">.</span><span class="n">ident</span><span class="p">:</span>
+                <span class="n">at</span><span class="p">[</span><span class="n">thread</span><span class="o">.</span><span class="n">ident</span><span class="p">]</span> <span class="o">=</span> <span class="n">thread</span><span class="o">.</span><span class="n">isAlive</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">at</span>
+</div>
+    <span class="k">def</span> <span class="nf">_dirtyLayersWorker</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_keepRendering</span><span class="p">:</span>
+            <span class="c"># Save reference to the queue in case self._dirtyLayerQueue reassigned during this pass.</span>
+            <span class="c"># See onSizeChanged()</span>
+            <span class="n">dirtyLayerQueue</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dirtyLayerQueue</span>
+            <span class="n">prefetchQueue</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prefetchQueue</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">result</span> <span class="o">=</span> <span class="n">dirtyLayerQueue</span><span class="o">.</span><span class="n">get_nowait</span><span class="p">()</span>
+                    <span class="n">queue</span> <span class="o">=</span> <span class="n">dirtyLayerQueue</span>
+                <span class="k">except</span> <span class="n">Empty</span><span class="p">:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">result</span> <span class="o">=</span> <span class="n">prefetchQueue</span><span class="o">.</span><span class="n">get_nowait</span><span class="p">()</span>
+                        <span class="n">queue</span> <span class="o">=</span> <span class="n">prefetchQueue</span>
+                    <span class="k">except</span> <span class="n">Empty</span><span class="p">:</span>
+                        <span class="k">try</span><span class="p">:</span>
+                            <span class="n">result</span> <span class="o">=</span> <span class="n">dirtyLayerQueue</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">True</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">THREAD_HEARTBEAT</span><span class="p">)</span>
+                            <span class="n">queue</span> <span class="o">=</span> <span class="n">dirtyLayerQueue</span>
+                        <span class="k">except</span> <span class="n">Empty</span><span class="p">:</span>
+                            <span class="k">continue</span>
+            <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+                <span class="c">#the TypeError occurs when the queue</span>
+                <span class="c">#is already None when the thread is being shut down</span>
+                <span class="c">#on program exit.</span>
+                <span class="c">#This avoids a lot of warnings.</span>
+                <span class="k">continue</span>
+
+            <span class="n">ims</span><span class="p">,</span> <span class="n">transform</span><span class="p">,</span> <span class="n">tile_nr</span><span class="p">,</span> <span class="n">stack_id</span><span class="p">,</span> <span class="n">image_req</span><span class="p">,</span> <span class="n">timestamp</span><span class="p">,</span> <span class="n">cache</span> <span class="o">=</span> <span class="n">result</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">layerTimestamp</span> <span class="o">=</span> <span class="n">cache</span><span class="o">.</span><span class="n">layerTimestamp</span><span class="p">(</span> <span class="n">stack_id</span><span class="p">,</span> <span class="n">ims</span><span class="p">,</span> <span class="n">tile_nr</span> <span class="p">)</span>
+                <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                    <span class="k">pass</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">timestamp</span> <span class="o">&gt;</span> <span class="n">layerTimestamp</span><span class="p">:</span>
+                        <span class="n">img</span> <span class="o">=</span> <span class="n">image_req</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+                        <span class="n">img</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">transformed</span><span class="p">(</span><span class="n">transform</span><span class="p">)</span>
+                        <span class="k">try</span><span class="p">:</span>
+                            <span class="n">cache</span><span class="o">.</span><span class="n">updateTileIfNecessary</span><span class="p">(</span> <span class="n">stack_id</span><span class="p">,</span> <span class="n">ims</span><span class="p">,</span> <span class="n">tile_nr</span><span class="p">,</span> <span class="n">timestamp</span><span class="p">,</span> <span class="n">img</span> <span class="p">)</span>
+                        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                            <span class="k">pass</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="k">if</span> <span class="n">stack_id</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_stack_id</span> <span class="ow">and</span> <span class="n">cache</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">:</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">sceneRectChanged</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">QRectF</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tiling</span><span class="o">.</span><span class="n">imageRects</span><span class="p">[</span><span class="n">tile_nr</span><span class="p">]))</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="k">with</span> <span class="n">volumina</span><span class="o">.</span><span class="n">printLock</span><span class="p">:</span>
+                    <span class="n">sys</span><span class="o">.</span><span class="n">excepthook</span><span class="p">(</span> <span class="o">*</span><span class="n">sys</span><span class="o">.</span><span class="n">exc_info</span><span class="p">()</span> <span class="p">)</span>
+                    <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;ERROR: volumina tiling layer rendering worker thread &quot;</span>\
+                                     <span class="s">&quot;caught an unhandled exception.  See above.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span> <span class="n">ims</span><span class="p">,</span> <span class="s">&#39;_layer&#39;</span> <span class="p">):</span>
+                        <span class="c"># For debug, print out the layer name if possible</span>
+                        <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;Error was encountered while requesting data from layer: &quot;</span>\
+                                         <span class="s">&quot;&#39;{}&#39;</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="n">ims</span><span class="o">.</span><span class="n">_layer</span><span class="o">.</span><span class="n">name</span> <span class="p">)</span> <span class="p">)</span>
+            <span class="k">finally</span><span class="p">:</span>
+                <span class="n">queue</span><span class="o">.</span><span class="n">task_done</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_refreshTile</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">stack_id</span><span class="p">,</span> <span class="n">tile_no</span><span class="p">,</span> <span class="n">prefetch</span><span class="o">=</span><span class="bp">False</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">axesSwapped</span><span class="p">:</span>
+            <span class="n">transform</span> <span class="o">=</span> <span class="n">QTransform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">transform</span> <span class="o">=</span> <span class="n">QTransform</span><span class="p">()</span><span class="o">.</span><span class="n">rotate</span><span class="p">(</span><span class="mi">90</span><span class="p">)</span><span class="o">.</span><span class="n">scale</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">transform</span> <span class="o">*=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tiling</span><span class="o">.</span><span class="n">data2scene</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">tileDirty</span><span class="p">(</span> <span class="n">stack_id</span><span class="p">,</span> <span class="n">tile_no</span> <span class="p">):</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">prefetch</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">setTileDirty</span><span class="p">(</span><span class="n">stack_id</span><span class="p">,</span> <span class="n">tile_no</span><span class="p">,</span> <span class="bp">False</span><span class="p">)</span>
+                    <span class="n">img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_renderTile</span><span class="p">(</span> <span class="n">stack_id</span><span class="p">,</span> <span class="n">tile_no</span> <span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">setTile</span><span class="p">(</span><span class="n">stack_id</span><span class="p">,</span> <span class="n">tile_no</span><span class="p">,</span> <span class="n">img</span><span class="p">,</span>
+                                        <span class="bp">self</span><span class="o">.</span><span class="n">_sims</span><span class="o">.</span><span class="n">viewVisible</span><span class="p">(),</span>
+                                        <span class="bp">self</span><span class="o">.</span><span class="n">_sims</span><span class="o">.</span><span class="n">viewOccluded</span><span class="p">())</span>
+
+                <span class="c"># refresh dirty layer tiles</span>
+                <span class="k">for</span> <span class="n">ims</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sims</span><span class="o">.</span><span class="n">viewImageSources</span><span class="p">():</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">layerDirty</span><span class="p">(</span><span class="n">stack_id</span><span class="p">,</span> <span class="n">ims</span><span class="p">,</span> <span class="n">tile_no</span><span class="p">)</span> \
+                       <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sims</span><span class="o">.</span><span class="n">isOccluded</span><span class="p">(</span><span class="n">ims</span><span class="p">)</span> \
+                       <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sims</span><span class="o">.</span><span class="n">isVisible</span><span class="p">(</span><span class="n">ims</span><span class="p">):</span>
+
+                        <span class="n">rect</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tiling</span><span class="o">.</span><span class="n">imageRects</span><span class="p">[</span><span class="n">tile_no</span><span class="p">]</span>
+                        <span class="n">dataRect</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tiling</span><span class="o">.</span><span class="n">scene2data</span><span class="o">.</span><span class="n">mapRect</span><span class="p">(</span><span class="n">rect</span><span class="p">)</span>
+                        <span class="n">ims_req</span> <span class="o">=</span> <span class="n">ims</span><span class="o">.</span><span class="n">request</span><span class="p">(</span><span class="n">dataRect</span><span class="p">,</span> <span class="n">stack_id</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+                        <span class="k">if</span> <span class="n">ims</span><span class="o">.</span><span class="n">direct</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">prefetch</span><span class="p">:</span>
+                            <span class="c"># The ImageSource &#39;ims&#39; is fast (it has the</span>
+                            <span class="c"># direct flag set to true) so we process</span>
+                            <span class="c"># the request synchronously here. This</span>
+                            <span class="c"># improves the responsiveness for layers</span>
+                            <span class="c"># that have the data readily available.</span>
+                            <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+                            <span class="n">img</span> <span class="o">=</span> <span class="n">ims_req</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+
+                            <span class="n">img</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">transformed</span><span class="p">(</span><span class="n">transform</span><span class="p">)</span>
+                            <span class="n">stop</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+                            <span class="n">ims</span><span class="o">.</span><span class="n">_layer</span><span class="o">.</span><span class="n">timePerTile</span><span class="p">(</span><span class="n">stop</span><span class="o">-</span><span class="n">start</span><span class="p">,</span>
+                                                   <span class="bp">self</span><span class="o">.</span><span class="n">tiling</span><span class="o">.</span><span class="n">imageRects</span><span class="p">[</span><span class="n">tile_no</span><span class="p">])</span>
+
+                            <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">updateTileIfNecessary</span><span class="p">(</span>
+                                <span class="n">stack_id</span><span class="p">,</span> <span class="n">ims</span><span class="p">,</span> <span class="n">tile_no</span><span class="p">,</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span> <span class="n">img</span> <span class="p">)</span>
+                            <span class="n">img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_renderTile</span><span class="p">(</span> <span class="n">stack_id</span><span class="p">,</span> <span class="n">tile_no</span> <span class="p">)</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">setTile</span><span class="p">(</span><span class="n">stack_id</span><span class="p">,</span> <span class="n">tile_no</span><span class="p">,</span>
+                                                <span class="n">img</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sims</span><span class="o">.</span><span class="n">viewVisible</span><span class="p">(),</span>
+                                                <span class="bp">self</span><span class="o">.</span><span class="n">_sims</span><span class="o">.</span><span class="n">viewOccluded</span><span class="p">()</span> <span class="p">)</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">req</span> <span class="o">=</span> <span class="p">(</span><span class="n">ims</span><span class="p">,</span> <span class="n">transform</span><span class="p">,</span> <span class="n">tile_no</span><span class="p">,</span> <span class="n">stack_id</span><span class="p">,</span>
+                                   <span class="n">ims_req</span><span class="p">,</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">)</span>
+                            <span class="k">try</span><span class="p">:</span>
+                                <span class="k">if</span> <span class="n">prefetch</span><span class="p">:</span>
+                                    <span class="bp">self</span><span class="o">.</span><span class="n">_prefetchQueue</span><span class="o">.</span><span class="n">put_nowait</span><span class="p">(</span> <span class="n">req</span> <span class="p">)</span>
+                                <span class="k">else</span><span class="p">:</span>
+                                    <span class="bp">self</span><span class="o">.</span><span class="n">_dirtyLayerQueue</span><span class="o">.</span><span class="n">put_nowait</span><span class="p">(</span> <span class="n">req</span> <span class="p">)</span>
+                            <span class="k">except</span> <span class="n">Full</span><span class="p">:</span>
+                                <span class="n">msg</span> <span class="o">=</span> <span class="s">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">((</span><span class="s">&quot;Request queue full.&quot;</span><span class="p">,</span>
+                                                <span class="s">&quot;Dropping tile refresh request.&quot;</span><span class="p">,</span>
+                                                <span class="s">&quot;Increase queue size!&quot;</span><span class="p">))</span>
+                                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">_renderTile</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">stack_id</span><span class="p">,</span> <span class="n">tile_nr</span><span class="p">):</span> 
+        <span class="n">qimg</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">reversed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_sims</span><span class="p">)):</span>
+            <span class="n">visible</span><span class="p">,</span> <span class="n">layerOpacity</span><span class="p">,</span> <span class="n">layerImageSource</span> <span class="o">=</span> <span class="n">v</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">visible</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">patch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">layer</span><span class="p">(</span><span class="n">stack_id</span><span class="p">,</span> <span class="n">layerImageSource</span><span class="p">,</span> <span class="n">tile_nr</span> <span class="p">)</span>
+            <span class="k">if</span> <span class="n">patch</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">qimg</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">qimg</span> <span class="o">=</span> <span class="n">QImage</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tiling</span><span class="o">.</span><span class="n">imageRects</span><span class="p">[</span><span class="n">tile_nr</span><span class="p">]</span><span class="o">.</span><span class="n">size</span><span class="p">(),</span> <span class="n">QImage</span><span class="o">.</span><span class="n">Format_ARGB32_Premultiplied</span><span class="p">)</span>
+                    <span class="n">qimg</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span><span class="mh">0xffffffff</span><span class="p">)</span> <span class="c"># Use a hex constant instead.</span>
+                    <span class="n">p</span> <span class="o">=</span> <span class="n">QPainter</span><span class="p">(</span><span class="n">qimg</span><span class="p">)</span>
+                <span class="n">p</span><span class="o">.</span><span class="n">setOpacity</span><span class="p">(</span><span class="n">layerOpacity</span><span class="p">)</span>
+                <span class="n">p</span><span class="o">.</span><span class="n">drawImage</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span> <span class="n">patch</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">p</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">end</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">qimg</span>
+    
+    <span class="k">def</span> <span class="nf">_onLayerDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dirtyImgSrc</span><span class="p">,</span> <span class="n">dataRect</span> <span class="p">):</span>
+        <span class="n">sceneRect</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tiling</span><span class="o">.</span><span class="n">data2scene</span><span class="o">.</span><span class="n">mapRect</span><span class="p">(</span><span class="n">dataRect</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">dirtyImgSrc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sims</span><span class="o">.</span><span class="n">viewImageSources</span><span class="p">():</span>
+            <span class="n">visibleAndNotOccluded</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sims</span><span class="o">.</span><span class="n">isVisible</span><span class="p">(</span> <span class="n">dirtyImgSrc</span> <span class="p">)</span> \
+                                    <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sims</span><span class="o">.</span><span class="n">isOccluded</span><span class="p">(</span> <span class="n">dirtyImgSrc</span> <span class="p">)</span>
+            <span class="k">for</span> <span class="n">tile_no</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tiling</span><span class="p">)):</span>
+                <span class="c"># an invalid rect means everything is dirty</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">sceneRect</span><span class="o">.</span><span class="n">isValid</span><span class="p">()</span> \
+                   <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">tiling</span><span class="o">.</span><span class="n">tileRects</span><span class="p">[</span><span class="n">tile_no</span><span class="p">]</span><span class="o">.</span><span class="n">intersected</span><span class="p">(</span> <span class="n">sceneRect</span> <span class="p">):</span>
+                    <span class="k">for</span> <span class="n">ims</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sims</span><span class="o">.</span><span class="n">viewImageSources</span><span class="p">():</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">setLayerDirtyAll</span><span class="p">(</span><span class="n">ims</span><span class="p">,</span> <span class="n">tile_no</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">visibleAndNotOccluded</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">setTileDirtyAll</span><span class="p">(</span><span class="n">tile_no</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">visibleAndNotOccluded</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">sceneRectChanged</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span> <span class="n">QRectF</span><span class="p">(</span><span class="n">sceneRect</span><span class="p">)</span> <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_onStackIdChanged</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">oldId</span><span class="p">,</span> <span class="n">newId</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="n">newId</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">touchStack</span><span class="p">(</span> <span class="n">newId</span> <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">addStack</span><span class="p">(</span> <span class="n">newId</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_stack_id</span> <span class="o">=</span> <span class="n">newId</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_prefetchQueue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_request_queue_size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sceneRectChanged</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">QRectF</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">_onLayerIdChanged</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">ims</span><span class="p">,</span> <span class="n">oldId</span><span class="p">,</span> <span class="n">newId</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layerIdChange_means_dirty</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_onLayerDirty</span><span class="p">(</span> <span class="n">ims</span><span class="p">,</span> <span class="n">QRect</span><span class="p">()</span> <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_onVisibleChanged</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ims</span><span class="p">,</span> <span class="n">visible</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">tile_no</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tiling</span><span class="p">)):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">setTileDirtyAll</span><span class="p">(</span><span class="n">tile_no</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sims</span><span class="o">.</span><span class="n">isOccluded</span><span class="p">(</span> <span class="n">ims</span> <span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sceneRectChanged</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">QRectF</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">_onOpacityChanged</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ims</span><span class="p">,</span> <span class="n">opacity</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">tile_no</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tiling</span><span class="p">)):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">setTileDirtyAll</span><span class="p">(</span><span class="n">tile_no</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sims</span><span class="o">.</span><span class="n">isVisible</span><span class="p">(</span> <span class="n">ims</span> <span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sims</span><span class="o">.</span><span class="n">isOccluded</span><span class="p">(</span> <span class="n">ims</span> <span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sceneRectChanged</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">QRectF</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">_onSizeChanged</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span> <span class="o">=</span> <span class="n">_TilesCache</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_current_stack_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sims</span><span class="p">,</span>
+                                  <span class="n">maxstacks</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_cache_size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dirtyLayerQueue</span> <span class="o">=</span> <span class="n">LifoQueue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_request_queue_size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_prefetchQueue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_request_queue_size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sceneRectChanged</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">QRectF</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">_onOrderChanged</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">tile_no</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tiling</span><span class="p">)):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">setTileDirtyAll</span><span class="p">(</span><span class="n">tile_no</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sceneRectChanged</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">QRectF</span><span class="p">())</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Bernhard X. Kausler, Thorben Kröger, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

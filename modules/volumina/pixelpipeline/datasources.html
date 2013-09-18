@@ -1,0 +1,641 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>volumina.pixelpipeline.datasources &mdash; volumina 0.6.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../../static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../static/jquery.js"></script>
+    <script type="text/javascript" src="../../../static/underscore.js"></script>
+    <script type="text/javascript" src="../../../static/doctools.js"></script>
+    <link rel="top" title="volumina 0.6.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for volumina.pixelpipeline.datasources</h1><div class="highlight"><pre>
+<span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">import</span> <span class="nn">weakref</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+<span class="kn">from</span> <span class="nn">PyQt4.QtCore</span> <span class="kn">import</span> <span class="n">QObject</span><span class="p">,</span> <span class="n">pyqtSignal</span><span class="p">,</span> <span class="n">QTimer</span>
+<span class="kn">from</span> <span class="nn">asyncabcs</span> <span class="kn">import</span> <span class="n">RequestABC</span><span class="p">,</span> <span class="n">SourceABC</span>
+<span class="kn">import</span> <span class="nn">volumina</span>
+<span class="kn">from</span> <span class="nn">volumina.slicingtools</span> <span class="kn">import</span> <span class="n">is_pure_slicing</span><span class="p">,</span> <span class="n">slicing2shape</span><span class="p">,</span> \
+    <span class="n">is_bounded</span><span class="p">,</span> <span class="n">make_bounded</span><span class="p">,</span> <span class="n">index2slice</span><span class="p">,</span> <span class="n">sl</span>
+<span class="kn">from</span> <span class="nn">volumina.config</span> <span class="kn">import</span> <span class="n">cfg</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+
+<span class="n">_has_lazyflow</span> <span class="o">=</span> <span class="bp">True</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">lazyflow.operators.opReorderAxes</span>
+<span class="k">except</span><span class="p">:</span>
+    <span class="n">_has_lazyflow</span> <span class="o">=</span> <span class="bp">False</span>
+
+<span class="n">_has_vigra</span> <span class="o">=</span> <span class="bp">True</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">vigra</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">_has_vigra</span> <span class="o">=</span> <span class="bp">False</span>
+    
+<span class="c">#*******************************************************************************</span>
+<span class="c"># A r r a y R e q u e s t                                                      *</span>
+<span class="c">#*******************************************************************************</span>
+
+<div class="viewcode-block" id="ArrayRequest"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.ArrayRequest">[docs]</a><span class="k">class</span> <span class="nc">ArrayRequest</span><span class="p">(</span> <span class="nb">object</span> <span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">,</span> <span class="n">slicing</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_array</span> <span class="o">=</span> <span class="n">array</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_slicing</span> <span class="o">=</span> <span class="n">slicing</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_result</span> <span class="o">=</span> <span class="bp">None</span>
+
+<div class="viewcode-block" id="ArrayRequest.wait"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.ArrayRequest.wait">[docs]</a>    <span class="k">def</span> <span class="nf">wait</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_result</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_slicing</span><span class="p">]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_result</span>
+    </div>
+<div class="viewcode-block" id="ArrayRequest.getResult"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.ArrayRequest.getResult">[docs]</a>    <span class="k">def</span> <span class="nf">getResult</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_result</span>
+</div>
+<div class="viewcode-block" id="ArrayRequest.cancel"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.ArrayRequest.cancel">[docs]</a>    <span class="k">def</span> <span class="nf">cancel</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="ArrayRequest.submit"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.ArrayRequest.submit">[docs]</a>    <span class="k">def</span> <span class="nf">submit</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">pass</span>
+        
+    <span class="c"># callback( result = result, **kwargs )</span></div>
+<div class="viewcode-block" id="ArrayRequest.notify"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.ArrayRequest.notify">[docs]</a>    <span class="k">def</span> <span class="nf">notify</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span> <span class="p">):</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_doNotify</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span> <span class="n">callback</span><span class="p">,</span> <span class="n">kwargs</span> <span class="p">))</span>
+        <span class="n">t</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+</div>
+    <span class="k">def</span> <span class="nf">_doNotify</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="n">kwargs</span> <span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        <span class="n">callback</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+<span class="k">assert</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">ArrayRequest</span><span class="p">,</span> <span class="n">RequestABC</span><span class="p">)</span>
+
+<span class="c">#*******************************************************************************</span>
+<span class="c"># A r r a y S o u r c e                                                        *</span>
+<span class="c">#*******************************************************************************</span>
+
+<div class="viewcode-block" id="ArraySource"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.ArraySource">[docs]</a><span class="k">class</span> <span class="nc">ArraySource</span><span class="p">(</span> <span class="n">QObject</span> <span class="p">):</span>
+    <span class="n">isDirty</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span> <span class="nb">object</span> <span class="p">)</span>
+    <span class="n">numberOfChannelsChanged</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span> <span class="c"># Never emitted</span>
+     
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">array</span> <span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ArraySource</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_array</span> <span class="o">=</span> <span class="n">array</span>
+        
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="ArraySource.numberOfChannels"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.ArraySource.numberOfChannels">[docs]</a>    <span class="k">def</span> <span class="nf">numberOfChannels</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="ArraySource.clean_up"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.ArraySource.clean_up">[docs]</a>    <span class="k">def</span> <span class="nf">clean_up</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_array</span> <span class="o">=</span> <span class="bp">None</span>
+</div>
+<div class="viewcode-block" id="ArraySource.dtype"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.ArraySource.dtype">[docs]</a>    <span class="k">def</span> <span class="nf">dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="o">.</span><span class="n">dtype</span>
+</div>
+<div class="viewcode-block" id="ArraySource.request"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.ArraySource.request">[docs]</a>    <span class="k">def</span> <span class="nf">request</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">slicing</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_pure_slicing</span><span class="p">(</span><span class="n">slicing</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&#39;ArraySource: slicing is not pure&#39;</span><span class="p">)</span>
+        <span class="k">assert</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">slicing</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="o">.</span><span class="n">shape</span><span class="p">)),</span> \
+            <span class="s">&quot;slicing into an array of shape=</span><span class="si">%r</span><span class="s"> requested, but slicing is </span><span class="si">%r</span><span class="s">&quot;</span> \
+            <span class="o">%</span> <span class="p">(</span><span class="n">slicing</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>  
+        <span class="k">return</span> <span class="n">ArrayRequest</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="p">,</span> <span class="n">slicing</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="ArraySource.setDirty"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.ArraySource.setDirty">[docs]</a>    <span class="k">def</span> <span class="nf">setDirty</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">slicing</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_pure_slicing</span><span class="p">(</span><span class="n">slicing</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&#39;dirty region: slicing is not pure&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">isDirty</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span> <span class="n">slicing</span> <span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">other</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="n">other</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="c"># Use id for efficiency</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_array</span> <span class="ow">is</span> <span class="n">other</span><span class="o">.</span><span class="n">_array</span>
+    
+    <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">other</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="p">(</span> <span class="bp">self</span> <span class="o">==</span> <span class="n">other</span> <span class="p">)</span>
+</div>
+<span class="k">assert</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">ArraySource</span><span class="p">,</span> <span class="n">SourceABC</span><span class="p">)</span>
+
+<span class="c">#*******************************************************************************</span>
+<span class="c"># A r r a y S i n k S o u r c e                                                *</span>
+<span class="c">#*******************************************************************************</span>
+
+<div class="viewcode-block" id="ArraySinkSource"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.ArraySinkSource">[docs]</a><span class="k">class</span> <span class="nc">ArraySinkSource</span><span class="p">(</span> <span class="n">ArraySource</span> <span class="p">):</span>
+<div class="viewcode-block" id="ArraySinkSource.put"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.ArraySinkSource.put">[docs]</a>    <span class="k">def</span> <span class="nf">put</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">slicing</span><span class="p">,</span> <span class="n">subarray</span><span class="p">,</span> <span class="n">neutral</span> <span class="o">=</span> <span class="mi">0</span> <span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Make an update of the wrapped arrays content.</span>
+
+<span class="sd">        Elements with neutral value in the subarray are not written into the</span>
+<span class="sd">        wrapped array, but the original values are kept.</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">assert</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">slicing</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="o">.</span><span class="n">shape</span><span class="p">)),</span> \
+            <span class="s">&quot;slicing into an array of shape=</span><span class="si">%r</span><span class="s"> requested, but the slicing object is </span><span class="si">%r</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">slicing</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>  
+        <span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="p">[</span><span class="n">slicing</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">subarray</span><span class="o">!=</span><span class="n">neutral</span><span class="p">,</span> <span class="n">subarray</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="p">[</span><span class="n">slicing</span><span class="p">])</span>
+        <span class="n">pure</span> <span class="o">=</span> <span class="n">index2slice</span><span class="p">(</span><span class="n">slicing</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setDirty</span><span class="p">(</span><span class="n">pure</span><span class="p">)</span>
+
+<span class="c">#*******************************************************************************</span>
+<span class="c"># R e l a b e l i n g A r r a y S o u r c e                                    * </span>
+<span class="c">#*******************************************************************************</span>
+</div></div>
+<div class="viewcode-block" id="RelabelingArraySource"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.RelabelingArraySource">[docs]</a><span class="k">class</span> <span class="nc">RelabelingArraySource</span><span class="p">(</span> <span class="n">ArraySource</span> <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Applies a relabeling to each request before passing it on</span>
+<span class="sd">       Currently, it casts everything to uint8, so be careful.&quot;&quot;&quot;</span>
+    <span class="n">isDirty</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span> <span class="nb">object</span> <span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">array</span> <span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">RelabelingArraySource</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">originalData</span> <span class="o">=</span> <span class="n">array</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_relabeling</span> <span class="o">=</span> <span class="bp">None</span>
+    
+<div class="viewcode-block" id="RelabelingArraySource.setRelabeling"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.RelabelingArraySource.setRelabeling">[docs]</a>    <span class="k">def</span> <span class="nf">setRelabeling</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">relabeling</span> <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Sets new relabeling vector. It should have a len(relabling) == max(your data)+1</span>
+<span class="sd">           and give, for each possible data value x, the relabling as relabeling[x].&quot;&quot;&quot;</span>   
+        <span class="k">assert</span> <span class="n">relabeling</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="o">.</span><span class="n">dtype</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_relabeling</span> <span class="o">=</span> <span class="n">relabeling</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setDirty</span><span class="p">(</span><span class="mi">5</span><span class="o">*</span><span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="bp">None</span><span class="p">),))</span>
+</div>
+<div class="viewcode-block" id="RelabelingArraySource.clearRelabeling"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.RelabelingArraySource.clearRelabeling">[docs]</a>    <span class="k">def</span> <span class="nf">clearRelabeling</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_relabeling</span><span class="p">[:]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setDirty</span><span class="p">(</span><span class="mi">5</span><span class="o">*</span><span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="bp">None</span><span class="p">),))</span>
+</div>
+<div class="viewcode-block" id="RelabelingArraySource.setRelabelingEntry"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.RelabelingArraySource.setRelabelingEntry">[docs]</a>    <span class="k">def</span> <span class="nf">setRelabelingEntry</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">setDirty</span><span class="o">=</span><span class="bp">True</span> <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Sets the entry for data value index to value, such that afterwards</span>
+<span class="sd">           relabeling[index] =  value.</span>
+<span class="sd">           </span>
+<span class="sd">           If setDirty is true, the source will signal dirtyness. If you plan to issue many calls to this function</span>
+<span class="sd">           in a loop, setDirty to true only on the last call.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_relabeling</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="k">if</span> <span class="n">setDirty</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setDirty</span><span class="p">(</span><span class="mi">5</span><span class="o">*</span><span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="bp">None</span><span class="p">),))</span>
+</div>
+<div class="viewcode-block" id="RelabelingArraySource.request"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.RelabelingArraySource.request">[docs]</a>    <span class="k">def</span> <span class="nf">request</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">slicing</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_pure_slicing</span><span class="p">(</span><span class="n">slicing</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&#39;ArraySource: slicing is not pure&#39;</span><span class="p">)</span>
+        <span class="k">assert</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">slicing</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="o">.</span><span class="n">shape</span><span class="p">)),</span> \
+            <span class="s">&quot;slicing into an array of shape=</span><span class="si">%r</span><span class="s"> requested, but slicing is </span><span class="si">%r</span><span class="s">&quot;</span> \
+            <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">slicing</span><span class="p">)</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">ArrayRequest</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="p">,</span> <span class="n">slicing</span><span class="p">)</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        
+        <span class="c">#oldDtype = a.dtype</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_relabeling</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_relabeling</span><span class="p">[</span><span class="n">a</span><span class="p">]</span>
+        <span class="c">#assert a.dtype == oldDtype </span>
+        <span class="k">return</span> <span class="n">ArrayRequest</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="mi">5</span><span class="o">*</span><span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="bp">None</span><span class="p">),))</span>
+        
+<span class="c">#*******************************************************************************</span>
+<span class="c"># L a z y f l o w R e q u e s t                                                *</span>
+<span class="c">#*******************************************************************************</span>
+</div></div>
+<div class="viewcode-block" id="LazyflowRequest"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.LazyflowRequest">[docs]</a><span class="k">class</span> <span class="nc">LazyflowRequest</span><span class="p">(</span> <span class="nb">object</span> <span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">op</span><span class="p">,</span> <span class="n">slicing</span><span class="p">,</span> <span class="n">prio</span><span class="p">,</span> <span class="n">objectName</span><span class="o">=</span><span class="s">&quot;Unnamed LazyflowRequest&quot;</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_req</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">Output</span><span class="p">[</span><span class="n">slicing</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_slicing</span> <span class="o">=</span> <span class="n">slicing</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span>
+        <span class="k">if</span> <span class="n">shape</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">slicing</span> <span class="o">=</span> <span class="n">make_bounded</span><span class="p">(</span><span class="n">slicing</span><span class="p">,</span> <span class="n">shape</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_shape</span> <span class="o">=</span> <span class="n">slicing2shape</span><span class="p">(</span><span class="n">slicing</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_objectName</span> <span class="o">=</span> <span class="n">objectName</span>
+        
+<div class="viewcode-block" id="LazyflowRequest.wait"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.LazyflowRequest.wait">[docs]</a>    <span class="k">def</span> <span class="nf">wait</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_req</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        <span class="k">assert</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">))</span>
+        <span class="k">assert</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shape</span><span class="p">),</span> <span class="s">&quot;LazyflowRequest.wait() [name=</span><span class="si">%s</span><span class="s">]: we requested shape </span><span class="si">%s</span><span class="s"> (slicing: </span><span class="si">%s</span><span class="s">), but lazyflow delivered shape </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_objectName</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shape</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_slicing</span><span class="p">,</span> <span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">a</span>
+        </div>
+<div class="viewcode-block" id="LazyflowRequest.getResult"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.LazyflowRequest.getResult">[docs]</a>    <span class="k">def</span> <span class="nf">getResult</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_req</span><span class="o">.</span><span class="n">result</span>
+        <span class="k">assert</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">))</span>
+        <span class="k">assert</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shape</span><span class="p">),</span> <span class="s">&quot;LazyflowRequest.getResult() [name=</span><span class="si">%s</span><span class="s">]: we requested shape </span><span class="si">%s</span><span class="s"> (slicing: </span><span class="si">%s</span><span class="s">), but lazyflow delivered shape </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_objectName</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shape</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_slicing</span><span class="p">,</span> <span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">a</span>
+</div>
+<div class="viewcode-block" id="LazyflowRequest.cancel"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.LazyflowRequest.cancel">[docs]</a>    <span class="k">def</span> <span class="nf">cancel</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_req</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="LazyflowRequest.submit"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.LazyflowRequest.submit">[docs]</a>    <span class="k">def</span> <span class="nf">submit</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_req</span><span class="o">.</span><span class="n">submit</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="LazyflowRequest.notify"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.LazyflowRequest.notify">[docs]</a>    <span class="k">def</span> <span class="nf">notify</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_req</span><span class="o">.</span><span class="n">notify_finished</span><span class="p">(</span> <span class="n">partial</span><span class="p">(</span><span class="n">callback</span><span class="p">,</span> <span class="p">(),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="p">)</span></div></div>
+<span class="k">assert</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">LazyflowRequest</span><span class="p">,</span> <span class="n">RequestABC</span><span class="p">)</span>
+
+<span class="c">#*******************************************************************************</span>
+<span class="c"># L a z y f l o w S o u r c e                                                  *</span>
+<span class="c">#*******************************************************************************</span>
+
+<div class="viewcode-block" id="weakref_setDirtyLF"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.weakref_setDirtyLF">[docs]</a><span class="k">def</span> <span class="nf">weakref_setDirtyLF</span><span class="p">(</span> <span class="n">wref</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span> <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    LazyflowSource uses this function to subscribe to dirty notifications without giving out a shared reference to itself.</span>
+<span class="sd">    Otherwise, LazyflowSource.__del__ would never be called.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">wref</span><span class="p">()</span><span class="o">.</span><span class="n">_setDirtyLF</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="LazyflowSource"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.LazyflowSource">[docs]</a><span class="k">class</span> <span class="nc">LazyflowSource</span><span class="p">(</span> <span class="n">QObject</span> <span class="p">):</span>
+    <span class="n">isDirty</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span> <span class="nb">object</span> <span class="p">)</span>
+    <span class="n">numberOfChannelsChanged</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="LazyflowSource.dataSlot"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.LazyflowSource.dataSlot">[docs]</a>    <span class="k">def</span> <span class="nf">dataSlot</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_orig_outslot</span>
+</div>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">outslot</span><span class="p">,</span> <span class="n">priority</span> <span class="o">=</span> <span class="mi">0</span> <span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">LazyflowSource</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+
+        <span class="k">assert</span> <span class="n">_has_lazyflow</span><span class="p">,</span> <span class="s">&quot;Can&#39;t instantiate a LazyflowSource: Wasn&#39;t able to import lazyflow.&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_orig_outslot</span> <span class="o">=</span> <span class="n">outslot</span>
+
+        <span class="c"># Attach an OpReorderAxes to ensure the data will display correctly</span>
+        <span class="c"># (We include the graph parameter, too, since tests sometimes provide an operator with no parent.)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_op5</span> <span class="o">=</span> <span class="n">lazyflow</span><span class="o">.</span><span class="n">operators</span><span class="o">.</span><span class="n">opReorderAxes</span><span class="o">.</span><span class="n">OpReorderAxes</span><span class="p">(</span> <span class="n">parent</span><span class="o">=</span><span class="n">outslot</span><span class="o">.</span><span class="n">getRealOperator</span><span class="p">()</span><span class="o">.</span><span class="n">parent</span><span class="p">,</span> <span class="n">graph</span><span class="o">=</span><span class="n">outslot</span><span class="o">.</span><span class="n">getRealOperator</span><span class="p">()</span><span class="o">.</span><span class="n">graph</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_op5</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="n">outslot</span> <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_priority</span> <span class="o">=</span> <span class="n">priority</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dirtyCallback</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span> <span class="n">weakref_setDirtyLF</span><span class="p">,</span> <span class="n">weakref</span><span class="o">.</span><span class="n">ref</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_op5</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">notifyDirty</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dirtyCallback</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_op5</span><span class="o">.</span><span class="n">externally_managed</span> <span class="o">=</span> <span class="bp">True</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">additional_owned_ops</span> <span class="o">=</span> <span class="p">[]</span> 
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_op5</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_op5</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">notifyMetaChanged</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_checkForNumChannelsChanged</span> <span class="p">)</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="LazyflowSource.numberOfChannels"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.LazyflowSource.numberOfChannels">[docs]</a>    <span class="k">def</span> <span class="nf">numberOfChannels</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    </div>
+    <span class="k">def</span> <span class="nf">_checkForNumChannelsChanged</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_op5</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_op5</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">ready</span><span class="p">()</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_op5</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_shape</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_op5</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">numberOfChannelsChanged</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="p">)</span>
+
+<div class="viewcode-block" id="LazyflowSource.clean_up"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.LazyflowSource.clean_up">[docs]</a>    <span class="k">def</span> <span class="nf">clean_up</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_op5</span><span class="o">.</span><span class="n">cleanUp</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_op5</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">for</span> <span class="n">op</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">additional_owned_ops</span><span class="p">):</span>
+            <span class="n">op</span><span class="o">.</span><span class="n">cleanUp</span><span class="p">()</span>
+</div>
+    <span class="k">def</span> <span class="nf">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_op5</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_op5</span><span class="o">.</span><span class="n">cleanUp</span><span class="p">()</span>
+            
+<div class="viewcode-block" id="LazyflowSource.dtype"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.LazyflowSource.dtype">[docs]</a>    <span class="k">def</span> <span class="nf">dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">dtype</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_orig_outslot</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">dtype</span>
+        <span class="k">assert</span> <span class="n">dtype</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">,</span> <span class="s">&quot;Your LazyflowSource doesn&#39;t have a dtype! Is your lazyflow slot properly configured in setupOutputs()?&quot;</span>
+        <span class="k">return</span> <span class="n">dtype</span>
+    </div>
+<div class="viewcode-block" id="LazyflowSource.request"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.LazyflowSource.request">[docs]</a>    <span class="k">def</span> <span class="nf">request</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">slicing</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">getboolean</span><span class="p">(</span><span class="s">&#39;pixelpipeline&#39;</span><span class="p">,</span> <span class="s">&#39;verbose&#39;</span><span class="p">):</span>
+            <span class="n">volumina</span><span class="o">.</span><span class="n">printLock</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+            <span class="k">print</span> <span class="s">&quot;  LazyflowSource &#39;</span><span class="si">%s</span><span class="s">&#39; requests </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">objectName</span><span class="p">(),</span> <span class="n">volumina</span><span class="o">.</span><span class="n">strSlicing</span><span class="p">(</span><span class="n">slicing</span><span class="p">))</span>
+            <span class="n">volumina</span><span class="o">.</span><span class="n">printLock</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_pure_slicing</span><span class="p">(</span><span class="n">slicing</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&#39;LazyflowSource: slicing is not pure&#39;</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_op5</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">,</span> <span class="s">&quot;Underlying operator is None.  Are you requesting from a datasource that has been cleaned up already?&quot;</span>
+        <span class="k">return</span> <span class="n">LazyflowRequest</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_op5</span><span class="p">,</span> <span class="n">slicing</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_priority</span><span class="p">,</span> <span class="n">objectName</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">objectName</span><span class="p">()</span> <span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">_setDirtyLF</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setDirty</span><span class="p">(</span><span class="n">roi</span><span class="o">.</span><span class="n">toSlice</span><span class="p">())</span>
+
+<div class="viewcode-block" id="LazyflowSource.setDirty"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.LazyflowSource.setDirty">[docs]</a>    <span class="k">def</span> <span class="nf">setDirty</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">slicing</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_pure_slicing</span><span class="p">(</span><span class="n">slicing</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&#39;dirty region: slicing is not pure&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">isDirty</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span> <span class="n">slicing</span> <span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">other</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="n">other</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_orig_outslot</span> <span class="ow">is</span> <span class="n">other</span><span class="o">.</span><span class="n">_orig_outslot</span>
+    
+    <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">other</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="p">(</span> <span class="bp">self</span> <span class="o">==</span> <span class="n">other</span> <span class="p">)</span>
+</div>
+<span class="k">assert</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">LazyflowSource</span><span class="p">,</span> <span class="n">SourceABC</span><span class="p">)</span>
+
+<div class="viewcode-block" id="LazyflowSinkSource"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.LazyflowSinkSource">[docs]</a><span class="k">class</span> <span class="nc">LazyflowSinkSource</span><span class="p">(</span> <span class="n">LazyflowSource</span> <span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">outslot</span><span class="p">,</span> <span class="n">inslot</span><span class="p">,</span> <span class="n">priority</span> <span class="o">=</span> <span class="mi">0</span> <span class="p">):</span>
+        <span class="n">LazyflowSource</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">outslot</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_inputSlot</span> <span class="o">=</span> <span class="n">inslot</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_priority</span> <span class="o">=</span> <span class="n">priority</span>
+
+<div class="viewcode-block" id="LazyflowSinkSource.put"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.LazyflowSinkSource.put">[docs]</a>    <span class="k">def</span> <span class="nf">put</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">slicing</span><span class="p">,</span> <span class="n">array</span> <span class="p">):</span>
+        <span class="k">assert</span> <span class="n">_has_vigra</span><span class="p">,</span> <span class="s">&quot;Lazyflow SinkSource requires lazyflow and vigra.&quot;</span>
+
+        <span class="n">taggedArray</span> <span class="o">=</span> <span class="n">array</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">vigra</span><span class="o">.</span><span class="n">VigraArray</span><span class="p">)</span>
+        <span class="n">taggedArray</span><span class="o">.</span><span class="n">axistags</span> <span class="o">=</span> <span class="n">vigra</span><span class="o">.</span><span class="n">defaultAxistags</span><span class="p">(</span><span class="s">&#39;txyzc&#39;</span><span class="p">)</span>
+
+        <span class="n">inputTags</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_inputSlot</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span>
+        <span class="n">inputKeys</span> <span class="o">=</span> <span class="p">[</span><span class="n">tag</span><span class="o">.</span><span class="n">key</span> <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">inputTags</span><span class="p">]</span>
+        <span class="n">transposedArray</span> <span class="o">=</span> <span class="n">taggedArray</span><span class="o">.</span><span class="n">withAxes</span><span class="p">(</span><span class="o">*</span><span class="n">inputKeys</span><span class="p">)</span>
+
+        <span class="n">taggedSlicing</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="s">&#39;txyzc&#39;</span><span class="p">,</span> <span class="n">slicing</span><span class="p">))</span>
+        <span class="n">transposedSlicing</span> <span class="o">=</span> <span class="p">()</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">inputKeys</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="s">&#39;txyzc&#39;</span><span class="p">:</span>
+                <span class="n">transposedSlicing</span> <span class="o">+=</span> <span class="p">(</span><span class="n">taggedSlicing</span><span class="p">[</span><span class="n">k</span><span class="p">],)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_inputSlot</span><span class="p">[</span><span class="n">transposedSlicing</span><span class="p">]</span> <span class="o">=</span> <span class="n">transposedArray</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">other</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="n">other</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">LazyflowSinkSource</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__eq__</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">&amp;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_inputSlot</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">_inputSlot</span>
+        <span class="k">return</span> <span class="n">result</span>
+    
+    <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">other</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="p">(</span> <span class="bp">self</span> <span class="o">==</span> <span class="n">other</span> <span class="p">)</span>
+        
+<span class="c">#*******************************************************************************</span>
+<span class="c"># C o n s t a n t R e q u e s t                                                *</span>
+<span class="c">#*******************************************************************************</span>
+</div>
+<div class="viewcode-block" id="ConstantRequest"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.ConstantRequest">[docs]</a><span class="k">class</span> <span class="nc">ConstantRequest</span><span class="p">(</span> <span class="nb">object</span> <span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">result</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_result</span> <span class="o">=</span> <span class="n">result</span>
+        
+<div class="viewcode-block" id="ConstantRequest.wait"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.ConstantRequest.wait">[docs]</a>    <span class="k">def</span> <span class="nf">wait</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_result</span>
+    </div>
+<div class="viewcode-block" id="ConstantRequest.getResult"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.ConstantRequest.getResult">[docs]</a>    <span class="k">def</span> <span class="nf">getResult</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_result</span>
+    </div>
+<div class="viewcode-block" id="ConstantRequest.cancel"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.ConstantRequest.cancel">[docs]</a>    <span class="k">def</span> <span class="nf">cancel</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="ConstantRequest.submit"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.ConstantRequest.submit">[docs]</a>    <span class="k">def</span> <span class="nf">submit</span> <span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">pass</span>
+        </div>
+<div class="viewcode-block" id="ConstantRequest.adjustPriority"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.ConstantRequest.adjustPriority">[docs]</a>    <span class="k">def</span> <span class="nf">adjustPriority</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delta</span><span class="p">):</span>
+        <span class="k">pass</span>        
+        
+    <span class="c"># callback( result = result, **kwargs )</span></div>
+<div class="viewcode-block" id="ConstantRequest.notify"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.ConstantRequest.notify">[docs]</a>    <span class="k">def</span> <span class="nf">notify</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span> <span class="p">):</span>
+        <span class="n">callback</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_result</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div></div>
+<span class="k">assert</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">ConstantRequest</span><span class="p">,</span> <span class="n">RequestABC</span><span class="p">)</span>
+
+<span class="c">#*******************************************************************************</span>
+<span class="c"># C o n s t a n t S o u r c e                                                  *</span>
+<span class="c">#*******************************************************************************</span>
+
+<div class="viewcode-block" id="ConstantSource"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.ConstantSource">[docs]</a><span class="k">class</span> <span class="nc">ConstantSource</span><span class="p">(</span> <span class="n">QObject</span> <span class="p">):</span>
+    <span class="n">isDirty</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span> <span class="nb">object</span> <span class="p">)</span>
+    <span class="n">idChanged</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span> <span class="nb">object</span><span class="p">,</span> <span class="nb">object</span> <span class="p">)</span> <span class="c"># old, new</span>
+    <span class="n">numberOfChannelsChanged</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span> <span class="c"># Never emitted</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">constant</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_constant</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="ConstantSource.numberOfChannels"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.ConstantSource.numberOfChannels">[docs]</a>    <span class="k">def</span> <span class="nf">numberOfChannels</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="mi">1</span>
+</div>
+    <span class="nd">@constant.setter</span>
+<div class="viewcode-block" id="ConstantSource.constant"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.ConstantSource.constant">[docs]</a>    <span class="k">def</span> <span class="nf">constant</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">value</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_constant</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setDirty</span><span class="p">(</span><span class="n">sl</span><span class="p">[:,:,:,:,:])</span>
+</div>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">constant</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">dtype</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="bp">None</span> <span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ConstantSource</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="n">parent</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_constant</span> <span class="o">=</span> <span class="n">constant</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dtype</span> <span class="o">=</span> <span class="n">dtype</span>
+
+<div class="viewcode-block" id="ConstantSource.clean_up"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.ConstantSource.clean_up">[docs]</a>    <span class="k">def</span> <span class="nf">clean_up</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="ConstantSource.id"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.ConstantSource.id">[docs]</a>    <span class="k">def</span> <span class="nf">id</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="nb">id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="ConstantSource.request"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.ConstantSource.request">[docs]</a>    <span class="k">def</span> <span class="nf">request</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">slicing</span><span class="p">,</span> <span class="n">through</span><span class="o">=</span><span class="bp">None</span> <span class="p">):</span>
+        <span class="k">assert</span> <span class="n">is_pure_slicing</span><span class="p">(</span><span class="n">slicing</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">is_bounded</span><span class="p">(</span><span class="n">slicing</span><span class="p">)</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="n">slicing2shape</span><span class="p">(</span><span class="n">slicing</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span> <span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dtype</span> <span class="p">)</span>
+        <span class="n">result</span><span class="p">[:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_constant</span>
+        <span class="k">return</span> <span class="n">ConstantRequest</span><span class="p">(</span> <span class="n">result</span> <span class="p">)</span>
+</div>
+<div class="viewcode-block" id="ConstantSource.setDirty"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.ConstantSource.setDirty">[docs]</a>    <span class="k">def</span> <span class="nf">setDirty</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">slicing</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_pure_slicing</span><span class="p">(</span><span class="n">slicing</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&#39;dirty region: slicing is not pure&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">isDirty</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span> <span class="n">slicing</span> <span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">other</span> <span class="p">):</span>
+        <span class="k">if</span> <span class="n">other</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_constant</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">_constant</span>
+    
+    <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">other</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="p">(</span> <span class="bp">self</span> <span class="o">==</span> <span class="n">other</span> <span class="p">)</span>
+
+<div class="viewcode-block" id="ConstantSource.dtype"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.ConstantSource.dtype">[docs]</a>    <span class="k">def</span> <span class="nf">dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dtype</span>
+</div></div>
+<span class="k">assert</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">ConstantSource</span><span class="p">,</span> <span class="n">SourceABC</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="MinMaxUpdateRequest"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.MinMaxUpdateRequest">[docs]</a><span class="k">class</span> <span class="nc">MinMaxUpdateRequest</span><span class="p">(</span> <span class="nb">object</span> <span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">rawRequest</span><span class="p">,</span> <span class="n">update_func</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rawRequest</span> <span class="o">=</span> <span class="n">rawRequest</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_func</span> <span class="o">=</span> <span class="n">update_func</span>
+
+<div class="viewcode-block" id="MinMaxUpdateRequest.wait"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.MinMaxUpdateRequest.wait">[docs]</a>    <span class="k">def</span> <span class="nf">wait</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="n">rawData</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rawRequest</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_result</span> <span class="o">=</span> <span class="n">rawData</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_func</span><span class="p">(</span><span class="n">rawData</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_result</span>
+    
+    <span class="c"># callback( result = result, **kwargs )</span></div>
+<div class="viewcode-block" id="MinMaxUpdateRequest.notify"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.MinMaxUpdateRequest.notify">[docs]</a>    <span class="k">def</span> <span class="nf">notify</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span> <span class="p">):</span>
+        <span class="k">def</span> <span class="nf">handleResult</span><span class="p">(</span><span class="n">rawResult</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_result</span> <span class="o">=</span>  <span class="n">rawResult</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_update_func</span><span class="p">(</span><span class="n">rawResult</span><span class="p">)</span>
+            <span class="n">callback</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_result</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rawRequest</span><span class="o">.</span><span class="n">notify</span><span class="p">(</span> <span class="n">handleResult</span> <span class="p">)</span>
+</div>
+<div class="viewcode-block" id="MinMaxUpdateRequest.getResult"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.MinMaxUpdateRequest.getResult">[docs]</a>    <span class="k">def</span> <span class="nf">getResult</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_result</span>
+</div></div>
+<span class="k">assert</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">MinMaxUpdateRequest</span><span class="p">,</span> <span class="n">RequestABC</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="MinMaxSource"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.MinMaxSource">[docs]</a><span class="k">class</span> <span class="nc">MinMaxSource</span><span class="p">(</span> <span class="n">QObject</span> <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A datasource that serves as a normalizing decorator for other datasources.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">isDirty</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span> <span class="nb">object</span> <span class="p">)</span>
+    <span class="n">boundsChanged</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span><span class="nb">object</span><span class="p">)</span> <span class="c"># When a new min/max is discovered in the result of a request, this signal is fired with the new (dmin, dmax)</span>
+    <span class="n">numberOfChannelsChanged</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    
+    <span class="n">_delayedBoundsChange</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">()</span> <span class="c"># Internal use only.  Allows non-main threads to start the delayedDirtySignal timer.</span>
+    
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">rawSource</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="bp">None</span> <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        rawSource: The original datasource whose data will be normalized</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">MinMaxSource</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">parent</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rawSource</span> <span class="o">=</span> <span class="n">rawSource</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rawSource</span><span class="o">.</span><span class="n">isDirty</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">isDirty</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rawSource</span><span class="o">.</span><span class="n">numberOfChannelsChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">numberOfChannelsChanged</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bounds</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1e9</span><span class="p">,</span><span class="o">-</span><span class="mf">1e9</span><span class="p">]</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">_delayedDirtySignal</span> <span class="o">=</span> <span class="n">QTimer</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_delayedDirtySignal</span><span class="o">.</span><span class="n">setSingleShot</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_delayedDirtySignal</span><span class="o">.</span><span class="n">setInterval</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_delayedDirtySignal</span><span class="o">.</span><span class="n">timeout</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">setDirty</span><span class="p">,</span> <span class="n">sl</span><span class="p">[:,:,:,:,:])</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_delayedBoundsChange</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_delayedDirtySignal</span><span class="o">.</span><span class="n">start</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="MinMaxSource.numberOfChannels"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.MinMaxSource.numberOfChannels">[docs]</a>    <span class="k">def</span> <span class="nf">numberOfChannels</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rawSource</span><span class="o">.</span><span class="n">numberOfChannels</span>
+</div>
+<div class="viewcode-block" id="MinMaxSource.clean_up"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.MinMaxSource.clean_up">[docs]</a>    <span class="k">def</span> <span class="nf">clean_up</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rawSource</span><span class="o">.</span><span class="n">clean_up</span><span class="p">()</span>
+            </div>
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="MinMaxSource.dataSlot"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.MinMaxSource.dataSlot">[docs]</a>    <span class="k">def</span> <span class="nf">dataSlot</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_rawSource</span><span class="p">,</span> <span class="s">&quot;_orig_outslot&quot;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rawSource</span><span class="o">.</span><span class="n">_orig_outslot</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">None</span>
+            </div>
+<div class="viewcode-block" id="MinMaxSource.dtype"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.MinMaxSource.dtype">[docs]</a>    <span class="k">def</span> <span class="nf">dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rawSource</span><span class="o">.</span><span class="n">dtype</span><span class="p">()</span>
+    </div>
+<div class="viewcode-block" id="MinMaxSource.request"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.MinMaxSource.request">[docs]</a>    <span class="k">def</span> <span class="nf">request</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">slicing</span> <span class="p">):</span>
+        <span class="n">rawRequest</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rawSource</span><span class="o">.</span><span class="n">request</span><span class="p">(</span><span class="n">slicing</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">MinMaxUpdateRequest</span><span class="p">(</span> <span class="n">rawRequest</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_getMinMax</span> <span class="p">)</span>
+</div>
+<div class="viewcode-block" id="MinMaxSource.setDirty"><a class="viewcode-back" href="../../../volumina.pixelpipeline.html#volumina.pixelpipeline.datasources.MinMaxSource.setDirty">[docs]</a>    <span class="k">def</span> <span class="nf">setDirty</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">slicing</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">isDirty</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">slicing</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">other</span> <span class="p">):</span>
+        <span class="n">equal</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="k">if</span> <span class="n">other</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="n">equal</span> <span class="o">&amp;=</span> <span class="nb">isinstance</span><span class="p">(</span> <span class="n">other</span><span class="p">,</span> <span class="n">MinMaxSource</span> <span class="p">)</span>
+        <span class="n">equal</span> <span class="o">&amp;=</span> <span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rawSource</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">_rawSource</span> <span class="p">)</span>
+        <span class="k">return</span> <span class="n">equal</span>
+
+    <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">other</span> <span class="p">):</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="p">(</span> <span class="bp">self</span> <span class="o">==</span> <span class="n">other</span> <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_getMinMax</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="n">dmin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">dmax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">dmin</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_bounds</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dmin</span><span class="p">)</span>
+        <span class="n">dmax</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_bounds</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">dmax</span><span class="p">)</span>
+        <span class="n">dirty</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_bounds</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">dmin</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">1e-2</span><span class="p">:</span>
+            <span class="n">dirty</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">dmax</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">_bounds</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mf">1e-2</span><span class="p">:</span>
+            <span class="n">dirty</span> <span class="o">=</span> <span class="bp">True</span>
+
+        <span class="k">if</span> <span class="n">dirty</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_bounds</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_bounds</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dmin</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_bounds</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_bounds</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dmax</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">boundsChanged</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_bounds</span><span class="p">)</span>
+
+            <span class="c"># Our min/max have changed, which means we must force the TileProvider to re-request all tiles.</span>
+            <span class="c"># If we simply mark everything dirty now, then nothing changes for the tile we just rendered.</span>
+            <span class="c"># (It was already dirty.  That&#39;s why we are rendering it right now.)</span>
+            <span class="c"># And when this data gets back to the TileProvider that requested it, the TileProvider will mark this tile clean again.</span>
+            <span class="c"># To ENSURE that the current tile is marked dirty AFTER the TileProvider has stored this data (and marked the tile clean),</span>
+            <span class="c">#  we&#39;ll use a timer to set everything dirty.</span>
+            <span class="c"># This fixes ilastik issue #418</span>
+
+            <span class="c"># Finally, note that before this timer was added, the problem described above occurred at random due to a race condition:</span>
+            <span class="c"># Sometimes the &#39;dirty&#39; signal was processed BEFORE the data (bad) and sometimes it was processed after the data (good),</span>
+            <span class="c"># due to the fact that the Qt signals are always delivered in the main thread.</span>
+            <span class="c"># Perhaps a better way to fix this would be to store a timestamp in the TileProvider for dirty notifications, which </span>
+            <span class="c"># could be compared with the request timestamp before clearing the dirty state for each tile.</span>
+
+            <span class="c"># Signal everything dirty with a timer, as described above.            </span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_delayedBoundsChange</span><span class="o">.</span><span class="n">emit</span><span class="p">()</span>
+
+            <span class="c"># Now, that said, we can still give a slightly more snappy response to the OTHER tiles (not this one)</span>
+            <span class="c"># if we immediately tell the TileProvider we are dirty.  This duplicates some requests, but that shouldn&#39;t be a big deal.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setDirty</span><span class="p">(</span> <span class="n">sl</span><span class="p">[:,:,:,:,:]</span> <span class="p">)</span>
+
+</div>
+<span class="k">assert</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">MinMaxSource</span><span class="p">,</span> <span class="n">SourceABC</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">volumina 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Bernhard X. Kausler, Thorben Kröger, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>
