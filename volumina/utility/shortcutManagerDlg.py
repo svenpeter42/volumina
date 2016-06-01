@@ -1,10 +1,15 @@
 import collections
 
-from PyQt4.QtCore import QStringList
+# python 3 has native unicode support and therefore no need for QString
+try:
+    from PyQt4.QtCore import QStringList
+except ImportError:
+    QStringList = type([])
+
 from PyQt4.QtGui import QDialog, QScrollArea, QHBoxLayout, QVBoxLayout, \
                         QLineEdit, QPushButton, QSpacerItem, QWidget, QTreeWidget, QTreeWidgetItem, QSizePolicy
 
-from shortcutManager import ShortcutManager
+from .shortcutManager import ShortcutManager
 
 class ShortcutManagerDlg(QDialog):
     def __init__(self, *args, **kwargs):
@@ -90,7 +95,7 @@ if __name__ == "__main__":
     def showShortcuts():
         mgrDlg = ShortcutManagerDlg(mainWindow)
         for (group, name), keyseq in sorted(mgr.get_keyseq_reversemap().items()):
-            print group + "." + name + " : " + keyseq
+            print(group + "." + name + " : " + keyseq)
 
     mainLayout = QVBoxLayout()
     btn = QPushButton("Show shortcuts")
@@ -101,7 +106,7 @@ if __name__ == "__main__":
     mainWindow.raise_()    
 
     def trigger(name):
-        print "Shortcut triggered:",name
+        print("Shortcut triggered:",name)
     
     ActionInfo = ShortcutManager.ActionInfo
     def registerShortcuts(mgr):

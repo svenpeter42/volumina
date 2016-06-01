@@ -24,12 +24,13 @@ import threading
 import weakref
 from functools import partial, wraps
 from PyQt4.QtCore import QObject, pyqtSignal, QTimer
-from asyncabcs import RequestABC, SourceABC, IndeterminateRequestError
+from .asyncabcs import RequestABC, SourceABC, IndeterminateRequestError
 import volumina
 from volumina.slicingtools import is_pure_slicing, slicing2shape, \
     is_bounded, make_bounded, index2slice, sl
 from volumina.config import cfg
 import numpy as np
+from future.utils import raise_
 
 _has_lazyflow = True
 try:
@@ -205,7 +206,7 @@ if _has_lazyflow:
                 return func(*args, **kwargs)
             except Slot.SlotNotReadyError as ex:
                 # Translate lazyflow not-ready errors into the volumina equivalent.
-                raise IndeterminateRequestError, IndeterminateRequestError(ex), sys.exc_info()[2]
+                raise_(IndeterminateRequestError, IndeterminateRequestError(ex), sys.exc_info()[2])
         wrapper.__wrapped__ = func # Emulate python 3 behavior of @functools.wraps        
         return wrapper
 
@@ -314,7 +315,7 @@ if _has_lazyflow:
         def request( self, slicing ):
             if cfg.getboolean('pixelpipeline', 'verbose'):
                 volumina.printLock.acquire()
-                print "  LazyflowSource '%s' requests %s" % (self.objectName(), volumina.strSlicing(slicing))
+                print("  LazyflowSource '%s' requests %s" % (self.objectName(), volumina.strSlicing(slicing)))
                 volumina.printLock.release()
             if not is_pure_slicing(slicing):
                 raise Exception('LazyflowSource: slicing is not pure')

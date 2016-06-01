@@ -21,6 +21,7 @@
 ###############################################################################
 from abc import ABCMeta, abstractmethod, abstractproperty
 from PyQt4.QtCore import pyqtSignal
+from future.utils import with_metaclass
 
 def _has_attribute( cls, attr ):
     return True if any(attr in B.__dict__ for B in cls.__mro__) else False
@@ -42,9 +43,7 @@ class IndeterminateRequestError(Exception):
 # R e q u e s t A B C                                                          *
 #*******************************************************************************
 
-class RequestABC:
-    __metaclass__ = ABCMeta
-
+class RequestABC(with_metaclass(ABCMeta)):
     @abstractmethod
     def wait( self ):
         ''' doc '''
@@ -65,9 +64,7 @@ class RequestABC:
 # S o u r c e A B C                                                            *
 #*******************************************************************************
 
-class SourceABC:
-    __metaclass__ = ABCMeta
-    
+class SourceABC(with_metaclass(ABCMeta)):
     numberOfChannelsChanged = pyqtSignal(int)
 
     @abstractproperty

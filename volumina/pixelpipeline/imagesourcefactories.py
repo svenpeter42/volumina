@@ -23,9 +23,9 @@ import copy
 from volumina.multimethods import multimethod
 from volumina.layer import GrayscaleLayer, RGBALayer, ColortableLayer, \
                                AlphaModulatedLayer, ClickableColortableLayer
-from imagesources import GrayscaleImageSource, ColortableImageSource, \
+from .imagesources import GrayscaleImageSource, ColortableImageSource, \
                          RGBAImageSource, AlphaModulatedImageSource
-from datasources import ConstantSource
+from .datasources import ConstantSource
 
 @multimethod(AlphaModulatedLayer, list)
 def createImageSource( layer, datasources2d ):

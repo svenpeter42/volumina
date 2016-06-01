@@ -22,7 +22,14 @@
 import colorsys
 import numpy
 
-from PyQt4.QtCore import QObject, pyqtSignal, QString
+from PyQt4.QtCore import QObject, pyqtSignal
+
+# python 3 has native unicode support and therefore no need for QString
+try:
+    from PyQt4.QtCore import QString
+except ImportError:
+    QString = type("")
+
 from PyQt4.QtGui import QColor
 
 from volumina.interpreter import ClickInterpreter

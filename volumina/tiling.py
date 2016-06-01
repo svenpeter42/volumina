@@ -34,14 +34,18 @@ from PyQt4.QtCore import QRect, QRectF, QMutex, QObject, pyqtSignal
 from PyQt4.QtGui import QImage, QPainter, QTransform
 
 #volumina
-from patchAccessor import PatchAccessor
+from .patchAccessor import PatchAccessor
 import volumina
 from volumina.pixelpipeline.asyncabcs import IndeterminateRequestError
 from volumina.utility import log_exception
 
 from concurrent.futures.thread import ThreadPoolExecutor, _WorkItem
 from concurrent.futures import _base
-import Queue
+
+try:
+    import Queue
+except ImportError:
+    import queue as Queue
 
 import logging
 logger = logging.getLogger(__name__)

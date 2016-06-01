@@ -21,17 +21,22 @@
 ###############################################################################
 import os
 import threading
-import cPickle as pickle
+
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
+
 from volumina.utility import Singleton
 
-class PreferencesManager():
+from future.utils import with_metaclass
+
+class PreferencesManager(with_metaclass(Singleton)):
     # TODO: Maybe this should be a wrapper API around QSettings (but with pickle strings)
     #       Pros:
     #         - Settings would be stored in standard locations for each platform
     #       Cons:
     #         - QT dependency (currently there are no non-gui preferences, but maybe someday)
-    
-    __metaclass__ = Singleton
 
     def get(self, group, setting, default=None):
         try:

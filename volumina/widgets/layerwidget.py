@@ -28,7 +28,7 @@ from PyQt4.QtGui import QStyledItemDelegate, QWidget, QListView, QStyle, \
 
 from volumina.layer import Layer
 from volumina.layerstack import LayerStackModel
-from layercontextmenu import layercontextmenu
+from .layercontextmenu import layercontextmenu
 from volumina.utility.qstring_codec import encode_from_qstring
 from volumina.utility.qstring_codec import decode_to_qstring
 

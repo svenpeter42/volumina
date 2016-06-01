@@ -39,7 +39,7 @@ if not has_handler(volumina_logger):
     volumina_logging_handler.setLevel(logging.INFO)
 
 NO3D = False
-import api
+from . import api
 
 verboseRequests = False
 
@@ -50,7 +50,7 @@ import threading
 printLock = threading.Lock()
 
 # volumina.icons_rc is needed on some machines for the icons to be displayed correctly
-import volumina.icons_rc
+from . import icons_rc
 
 def strSlicing(slicing):
     str = "("

@@ -31,7 +31,7 @@ from PyQt4.QtCore import pyqtSignal, QObject
 from PyQt4.QtGui import QApplication, QWidget
 
 #volumina
-import volumina.pixelpipeline.imagepump
+import .pixelpipeline.imagepump
 from eventswitch import EventSwitch
 from imageScene2D import ImageScene2D
 from imageView2D import ImageView2D

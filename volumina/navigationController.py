@@ -26,7 +26,7 @@ import copy
 import warnings
 from functools import partial
 
-from eventswitch import InterpreterABC
+from .eventswitch import InterpreterABC
 
 from volumina.sliceIntersectionMarker import SliceIntersectionMarker
 from volumina.imageScene2D import DirtyIndicator

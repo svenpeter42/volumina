@@ -24,7 +24,14 @@ from operator import mul, itemgetter
 import os
 
 from PyQt4 import uic
-from PyQt4.QtCore import Qt, QEvent, QString, QRectF
+from PyQt4.QtCore import Qt, QEvent, QRectF
+
+# python 3 has native unicode support and therefore no need for QString
+try:
+    from PyQt4.QtCore import QString
+except ImportError:
+    QString = type("")
+
 from PyQt4.QtGui import QDialog, QDialogButtonBox, QFileDialog, QImageWriter, QImage, QPainter, qRgb, QColorDialog, \
     QApplication
 

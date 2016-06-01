@@ -20,28 +20,39 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 import sys
-from PyQt4.QtCore import QString
 
-def encode_from_qstring(qstr, encoding=sys.getfilesystemencoding()):
-    """
-    Convert the given QString into a Python str.
-    If no encoding is provided, use the same encoding as the filesystem.
-    """
-    assert isinstance(qstr, QString)
-    return unicode(qstr).encode( encoding )
+# python 3 has native unicode support and therefore no need for QString
+try:
+    from PyQt4.QtCore import QString
 
-def decode_to_qstring(s, encoding=sys.getfilesystemencoding()):
-    """
-    Convert the given Python str into a QString.
-    If not encoding is specified, use the same encoding as the filesystem.
-    """
-    # pyqt converts unicode to QString correctly.
-    assert isinstance(s, str) or isinstance(s, unicode)
-    return QString( s.decode( encoding ) )
+    def encode_from_qstring(qstr, encoding=sys.getfilesystemencoding()):
+        """
+        Convert the given QString into a Python str.
+        If no encoding is provided, use the same encoding as the filesystem.
+        """
+        assert isinstance(qstr, QString)
+        return unicode(qstr).encode( encoding )
 
+    def decode_to_qstring(s, encoding=sys.getfilesystemencoding()):
+        """
+        Convert the given Python str into a QString.
+        If not encoding is specified, use the same encoding as the filesystem.
+        """
+        # pyqt converts unicode to QString correctly.
+        assert isinstance(s, str) or isinstance(s, unicode)
+        return QString( s.decode( encoding ) )
+except ImportError:
+    def encode_from_qstring(qstr, encoding=sys.getfilesystemencoding()):
+        """
+        Convert the given QString into a Python str.
+        If no encoding is provided, use the same encoding as the filesystem.
+        """
+        return s.encode(encoding)
 
-assert sys.version_info.major == 2, \
-    "This file assumes Python 2 str/unicode semantics. "\
-    "If you upgrade to Python 3,  you'll have to change it. "\
-    "(Or maybe just get rid of it?)/"
+    def decode_to_qstring(s, encoding=sys.getfilesystemencoding()):
+        """
+        Convert the given Python str into a QString.
+        If not encoding is specified, use the same encoding as the filesystem.
+        """
+        return s.decode(encoding)
 

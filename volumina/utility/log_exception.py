@@ -1,5 +1,5 @@
 import traceback
-import StringIO
+from io import StringIO
 import logging
 
 def log_exception( logger, msg=None, exc_info=None, level=logging.ERROR ):

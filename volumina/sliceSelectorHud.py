@@ -22,7 +22,14 @@
 from functools import partial
 
 #PyQt
-from PyQt4.QtCore import pyqtSignal, Qt, QPointF, QSize, QString
+from PyQt4.QtCore import pyqtSignal, Qt, QPointF, QSize
+
+# python 3 has native unicode support and therefore no need for QString
+try:
+    from PyQt4.QtCore import QString
+except ImportError:
+    QString = type("")
+
 from PyQt4.QtGui import QLabel, QPen, QPainter, QPixmap, QColor, QHBoxLayout, QVBoxLayout, \
                         QFont, QPainterPath, QBrush, QAbstractSpinBox, \
                         QCheckBox, QWidget, QFrame, QTransform, QProgressBar, QSizePolicy, QSlider, QPushButton

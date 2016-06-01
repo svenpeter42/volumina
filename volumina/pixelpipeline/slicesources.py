@@ -20,7 +20,7 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 from PyQt4.QtCore import QObject, pyqtSignal
-from asyncabcs import SourceABC, RequestABC
+from .asyncabcs import SourceABC, RequestABC
 import numpy as np
 import volumina
 from volumina.slicingtools import SliceProjection, is_pure_slicing, intersection, sl
@@ -138,7 +138,7 @@ class SliceSource( QObject ):
         
         if volumina.verboseRequests:
             volumina.printLock.acquire()
-            print Fore.RED + "SliceSource requests '%r' from data source '%s'" % (slicing, self._datasource.name) + Fore.RESET
+            print(Fore.RED + "SliceSource requests '%r' from data source '%s'" % (slicing, self._datasource.name) + Fore.RESET)
             volumina.printLock.release()
         return SliceRequest(self._datasource.request(slicing), self.sliceProjection)
         
