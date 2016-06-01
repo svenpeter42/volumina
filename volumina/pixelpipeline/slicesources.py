@@ -25,6 +25,7 @@ import numpy as np
 import volumina
 from volumina.slicingtools import SliceProjection, is_pure_slicing, intersection, sl
 from volumina.colorama import Fore
+from past.builtins import xrange
 
 projectionAlongTXC = SliceProjection( abscissa = 2, ordinate = 3, along = [0,1,4] )
 projectionAlongTYC = SliceProjection( abscissa = 1, ordinate = 3, along = [0,2,4] )

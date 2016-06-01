@@ -565,7 +565,7 @@ class RGBAImageRequest( object ):
         return img.convertToFormat(QImage.Format_ARGB32_Premultiplied)        
 
     def notify( self, callback, **kwargs ):
-        for i in xrange(4):
+        for i in range(4):
             self._requests[i].notify(self._onNotify, package = (i, callback, kwargs))
 
     def _onNotify( self, result, package ):

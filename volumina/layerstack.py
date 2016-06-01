@@ -26,7 +26,13 @@ from PyQt4.QtGui import QItemSelectionModel
 
 from volumina.layer import Layer
 
-
+import sys
+if sys.version_info.major == 2:
+    def toPyObject(obj):
+        return obj.toPyObject()
+else:
+    def toPyObject(obj):
+        return obj
 
 class LayerStackModel(QAbstractListModel):
     canMoveSelectedUp = pyqtSignal("bool")
@@ -283,7 +289,7 @@ class LayerStackModel(QAbstractListModel):
         if role == Qt.EditRole:
             layer = value
             if not isinstance(value, Layer):
-                layer = value.toPyObject()
+                layer = toPyObject(value)
             self._layerStack[index.row()] = layer
             self.dataChanged.emit(index, index)
             return True

@@ -34,6 +34,7 @@ not wrapped in a sequence.
 import numpy as np
 from PyQt4.QtCore import QRect
 import itertools
+from past.builtins import xrange
 
 
 #*******************************************************************************

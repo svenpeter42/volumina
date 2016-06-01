@@ -33,6 +33,8 @@ from volumina.pixelpipeline.imagepump import StackedImageSources
 import datetime
 import threading
 
+from builtins import range
+
 #*******************************************************************************
 # D i r t y I n d i c a t o r                                                  *
 #*******************************************************************************
@@ -458,13 +460,13 @@ class ImageScene2D(QGraphicsScene):
     def _bowWave(self, n):
         shape5d = self._posModel.shape5D
         sl5d = self._posModel.slicingPos5D
-        through = [sl5d[self._along[i]] for i in xrange(3)]
-        t_max = [shape5d[self._along[i]] for i in xrange(3)]
+        through = [sl5d[self._along[i]] for i in range(3)]
+        t_max = [shape5d[self._along[i]] for i in range(3)]
 
         BowWave = []
 
         a = self._course[0]
-        for d in xrange(1,n+1):
+        for d in range(1,n+1):
             m = through[a] + d * self._course[1]
             if m < t_max[a] and m >= 0:
                 t = list(through)

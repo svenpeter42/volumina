@@ -26,6 +26,8 @@ import os
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, QEvent, QRectF
 
+from past.builtins import xrange
+
 # python 3 has native unicode support and therefore no need for QString
 try:
     from PyQt4.QtCore import QString

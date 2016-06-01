@@ -171,9 +171,9 @@ class ShortcutManager(with_metaclass(Singleton, object)):
         #       We intercept the shortcut and decide which widget to direct it to.
         #       (We don't rely on Qt to do this for us.)
         # Note: This class assumes that all widgets using shortcuts belong to the SAME main window.
-        assert keyseq not in self._global_shortcuts
-        keyseq = QKeySequence(keyseq)
         keytext = str(keyseq.toString())
+        assert keytext not in self._global_shortcuts
+        keyseq = QKeySequence(keyseq)
         self._global_shortcuts[keytext] = QShortcut( QKeySequence(keyseq), 
                                                      getMainWindow(), 
                                                      member=partial(self._handle_shortcut_pressed, keytext), 

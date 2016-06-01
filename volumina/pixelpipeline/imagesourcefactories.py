@@ -64,7 +64,7 @@ def createImageSource( layer, datasources2d ):
 def createImageSource( layer, datasources2d ):
     assert len(datasources2d) == 4
     ds = copy.copy(datasources2d)
-    for i in xrange(3):
+    for i in range(3):
         if datasources2d[i] == None:
             ds[i] = ConstantSource(layer.color_missing_value)
     guarantees_opaqueness = False

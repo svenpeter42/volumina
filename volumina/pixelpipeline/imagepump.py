@@ -30,6 +30,8 @@ from .slicesources import SliceSource, SyncedSliceSources
 from .imagesourcefactories import createImageSource
 from .imagesources import AlphaModulatedImageSource, ColortableImageSource
 
+from past.builtins import xrange
+
 class StackedImageSources( QObject ):
     """Manages an ordered stack of image sources.
     
@@ -402,7 +404,7 @@ class ImagePump( object ):
                 return SliceSource( datasrc, self._projection )
             return None
 
-        slicesrcs = map( sliceSrcOrNone, layer.datasources )
+        slicesrcs = list(map( sliceSrcOrNone, layer.datasources ))
         ims = createImageSource( layer, slicesrcs )
         # remove Nones
         slicesrcs = [ src for src in slicesrcs if src != None]

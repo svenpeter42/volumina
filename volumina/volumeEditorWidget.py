@@ -34,10 +34,10 @@ from PyQt4.QtGui import QApplication, QWidget, QShortcut, QKeySequence, QHBoxLay
                         QColor, QSizePolicy, QAction, QIcon, QSpinBox, QMenu, QDialog, QLabel, QLineEdit, QPushButton, QMainWindow
 
 #volumina
-from quadsplitter import QuadView
-from sliceSelectorHud import ImageView2DHud, QuadStatusBar
-from pixelpipeline.datasources import ArraySource
-from volumeEditor import VolumeEditor
+from .quadsplitter import QuadView
+from .sliceSelectorHud import ImageView2DHud, QuadStatusBar
+from .pixelpipeline.datasources import ArraySource
+from .volumeEditor import VolumeEditor
 from volumina.utility import ShortcutManager
 
 class __TimerEventEater( QObject ):
@@ -225,7 +225,7 @@ class VolumeEditorWidget(QWidget):
             for axis in [0,1,2]:
                 self.editor.imageViews[axis].hud.set3DButtonsVisible(True)
 
-            singletonDims = filter( lambda (i,dim): dim == 1, enumerate(self.editor.posModel.shape5D[1:4]) )
+            singletonDims = list(filter( lambda x: x[1] == 1, enumerate(self.editor.posModel.shape5D[1:4]) ))
             if len(singletonDims) == 1:
                 # Maximize the slicing view for this axis
                 axis = singletonDims[0][0]

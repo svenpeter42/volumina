@@ -32,6 +32,15 @@ from .layercontextmenu import layercontextmenu
 from volumina.utility.qstring_codec import encode_from_qstring
 from volumina.utility.qstring_codec import decode_to_qstring
 
+import sys
+if sys.version_info.major == 2:
+    def toPyObject(obj):
+        return obj.toPyObject()
+else:
+    def toPyObject(obj):
+        return obj
+
+
 class FractionSelectionBar( QWidget ):
     fractionChanged = pyqtSignal(float)
 
@@ -254,7 +263,7 @@ class LayerDelegate(QStyledItemDelegate):
         self._editors = {}
 
     def sizeHint(self, option, index):
-        layer = index.data().toPyObject()
+        layer = toPyObject(index.data())
         if isinstance(layer, Layer):
             self._w.layer = layer
             self._w.channelSelector.setVisible(True)
@@ -266,7 +275,7 @@ class LayerDelegate(QStyledItemDelegate):
         """
         Create an editor widget.  Note that the LayerWidget always uses persistent editors.
         """
-        layer = index.data().toPyObject()
+        layer = toPyObject(index.data())
         if isinstance(layer, Layer):
             editor = LayerItemWidget(parent=parent)
             editor.is_editor = True
@@ -287,7 +296,7 @@ class LayerDelegate(QStyledItemDelegate):
         Return the editor (if any) that has already been 
         opened for the layer at the given index.
         """
-        layer = modelIndex.data().toPyObject()
+        layer = toPyObject(modelIndex.data())
         try:
             return self._editors[layer]
         except KeyError:
@@ -328,14 +337,14 @@ class LayerDelegate(QStyledItemDelegate):
                 editor.setBackgroundRole(QPalette.Highlight)
 
     def setEditorData(self, editor, index):
-        layer = index.data().toPyObject()
+        layer = toPyObject(index.data())
         if isinstance(layer, Layer):
             editor.layer = layer
         else:
             QStyledItemDelegate.setEditorData(self, editor, index)
 
     def setModelData(self, editor, model, index):
-        layer = index.data().toPyObject()
+        layer = toPyObject(index.data())
         if isinstance(layer, Layer):
             model.setData(index, editor.layer)
         else:
@@ -344,7 +353,7 @@ class LayerDelegate(QStyledItemDelegate):
     def handleRemovedRows(self, parent, start, end):
         for row in range(start, end):
             itemData = self._listModel.itemData( self._listModel.index(row) )
-            layer = itemData[Qt.EditRole].toPyObject()
+            layer = toPyObject(itemData[Qt.EditRole])
             del self._editors[layer]
             assert isinstance(layer, Layer)
 

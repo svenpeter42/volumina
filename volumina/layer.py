@@ -39,6 +39,8 @@ from volumina.pixelpipeline.datasources import MinMaxSource
 from volumina.utility import decode_to_qstring, encode_from_qstring
 
 from functools import partial
+from builtins import range
+from past.builtins import long
 
 #*******************************************************************************
 # L a y e r                                                                    *
@@ -217,7 +219,7 @@ class Layer( QObject ):
         # grab numberOfChannels for those that are defined.
         # That is, if there are any datasources.
         newchannels = []
-        for i in xrange(len(self._datasources)):
+        for i in range(len(self._datasources)):
             if self._datasources[i] is not None:
                 newchannels.append(self._datasources[i].numberOfChannels)
 

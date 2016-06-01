@@ -31,18 +31,18 @@ from PyQt4.QtCore import pyqtSignal, QObject
 from PyQt4.QtGui import QApplication, QWidget
 
 #volumina
-import .pixelpipeline.imagepump
-from eventswitch import EventSwitch
-from imageScene2D import ImageScene2D
-from imageView2D import ImageView2D
-from positionModel import PositionModel
-from croppingMarkers import CropExtentsModel
-from navigationController import NavigationController, NavigationInterpreter
-from brushingcontroller import BrushingInterpreter, BrushingController, \
+from .pixelpipeline import imagepump
+from .eventswitch import EventSwitch
+from .imageScene2D import ImageScene2D
+from .imageView2D import ImageView2D
+from .positionModel import PositionModel
+from .croppingMarkers import CropExtentsModel
+from .navigationController import NavigationController, NavigationInterpreter
+from .brushingcontroller import BrushingInterpreter, BrushingController, \
                               CrosshairController
-from thresholdingcontroller import ThresholdingInterpreter
-from brushingmodel import BrushingModel
-from slicingtools import SliceProjection
+from .thresholdingcontroller import ThresholdingInterpreter
+from .brushingmodel import BrushingModel
+from .slicingtools import SliceProjection
 
 import logging
 logger = logging.getLogger(__name__)
@@ -265,9 +265,9 @@ class VolumeEditor( QObject ):
         alongTZC = SliceProjection( abscissa = 1, ordinate = 2, along = [0,3,4] )
 
         imagepumps = []
-        imagepumps.append(volumina.pixelpipeline.imagepump.ImagePump( self.layerStack, alongTXC, self._sync_along ))
-        imagepumps.append(volumina.pixelpipeline.imagepump.ImagePump( self.layerStack, alongTYC, self._sync_along ))
-        imagepumps.append(volumina.pixelpipeline.imagepump.ImagePump( self.layerStack, alongTZC, self._sync_along ))
+        imagepumps.append(imagepump.ImagePump( self.layerStack, alongTXC, self._sync_along ))
+        imagepumps.append(imagepump.ImagePump( self.layerStack, alongTYC, self._sync_along ))
+        imagepumps.append(imagepump.ImagePump( self.layerStack, alongTZC, self._sync_along ))
 
         return imagepumps
 

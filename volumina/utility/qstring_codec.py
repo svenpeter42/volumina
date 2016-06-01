@@ -47,12 +47,12 @@ except ImportError:
         Convert the given QString into a Python str.
         If no encoding is provided, use the same encoding as the filesystem.
         """
-        return s.encode(encoding)
+        return qstr
 
     def decode_to_qstring(s, encoding=sys.getfilesystemencoding()):
         """
         Convert the given Python str into a QString.
         If not encoding is specified, use the same encoding as the filesystem.
         """
-        return s.decode(encoding)
+        return s
 

@@ -25,9 +25,9 @@ from PyQt4.QtGui import QCursor, QGraphicsView, QPainter, QVBoxLayout, QApplicat
 import numpy
 import os
 
-from crossHairCursor import CrossHairCursor
-from sliceIntersectionMarker import SliceIntersectionMarker
-from croppingMarkers import CroppingMarkers
+from .crossHairCursor import CrossHairCursor
+from .sliceIntersectionMarker import SliceIntersectionMarker
+from .croppingMarkers import CroppingMarkers
 from volumina.widgets.wysiwygExportOptionsDlg import WysiwygExportOptionsDlg
 
 #*******************************************************************************
